@@ -46,6 +46,12 @@ Deploy an exact Git ref to prod:
 python3 deploy_instance.py prod --ref production --restart
 ```
 
+Promote a tested ref to prod:
+
+```bash
+python3 deploy_instance.py promote --from-ref main --tag prod-YYYY-MM-DD-N --restart
+```
+
 Add `--waveforms` when waveform metadata needs to be regenerated. Systemd unit
 templates live in `infra/systemd/`.
 
@@ -53,12 +59,18 @@ Default change workflow:
 
 1. Make app changes in `web/` and commit them on `main`.
 2. Deploy/verify test from the working tree or a test ref.
-3. Promote by fast-forwarding `production` to the tested commit and deploying prod from that ref.
-4. Optionally tag important prod releases for immutable rollback points.
+3. Promote with `deploy_instance.py promote --from-ref <tested-ref> --tag <prod-tag> --restart`.
+4. Roll back with `deploy_instance.py prod --ref <prod-tag> --restart`.
 
 The whole app is prepared as one Git repo. Song `sections.json` marker files are
 tracked as lightweight authored metadata. Media, score, document assets, generated
 manifests, and waveform cache files stay local/ignored.
+
+Safety rails:
+
+- Prod deployments require `--ref` unless `--allow-working-tree-prod` is passed.
+- Deployments run smoke checks by default; pass `--no-smoke` only for diagnostics.
+- Use `--dry-run` to preview deploy/promote actions without changing refs, files, or services.
 
 ## Target MVP outcomes
 - Login-protected app

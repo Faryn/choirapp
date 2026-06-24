@@ -17,6 +17,8 @@ Useful commands:
 python3 serve_static.py --directory instances/test/web --port 5175
 python3 deploy_instance.py test
 python3 deploy_instance.py prod --ref production --restart
+python3 deploy_instance.py promote --from-ref main --tag prod-YYYY-MM-DD-N --restart
+python3 deploy_instance.py smoke prod
 python3 build_repertoire_manifest.py --web-dir instances/test/web
 python3 build_waveform_cache_incremental.py --web-dir instances/test/web
 systemctl --user restart choir-app-test.service

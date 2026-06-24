@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/choir-app/sections.schema.json",
+  "title": "choir app sections",
+  "oneOf": [
+    {
+      "type": "array",
+      "items": { "$ref": "#/$defs/section" }
+    },
+    {
+      "type": "object",
+      "required": ["schema", "sections"],
+      "properties": {
+        "schema": { "const": "choir-app-sections-v1" },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/section" }
+        }
+      },
+      "additionalProperties": true
+    }
+  ],
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": ["name", "start"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "start": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

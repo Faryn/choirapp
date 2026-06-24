@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python
+        run: python -m py_compile deploy_instance.py build_repertoire_manifest.py build_waveform_cache.py build_waveform_cache_incremental.py serve_static.py
+      - name: Parse inline browser scripts
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          for (const file of ['web/index.html', 'web/page-coder.html']) {
+            const html = fs.readFileSync(file, 'utf8');
+            const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
+            for (const script of scripts) new Function(script);
+            console.log(`${file}: parsed`);
+          }
+          NODE
+      - name: Validate tracked section files
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+
+          files = subprocess.check_output([
+              "git", "ls-files", "data/repertoire/01_Aktuelles_Repertoire/*/sections.json"
+          ], text=True).splitlines()
+          for path in files:
+              with open(path, encoding="utf-8") as handle:
+                  data = json.load(handle)
+              sections = data if isinstance(data, list) else data.get("sections", [])
+              assert sections, f"{path}: missing sections"
+              last = -1
+              for item in sections:
+                  assert str(item.get("name", "")).strip(), f"{path}: section missing name"
+                  start = float(item["start"])
+                  assert start >= 0, f"{path}: negative start"
+                  assert start >= last, f"{path}: sections not sorted"
+                  last = start
+              print(f"{path}: {len(sections)} sections")
+          PY
+      - name: Guard copyrighted media
+        run: |
+          ! git ls-files 'data/**/*' | grep -Ei '\.(mp3|m4a|pdf|docx?|zip)$'
