@@ -20,5 +20,8 @@ web/repertoire.json
 web/waveforms.json
 web/waveforms/
 instances/*/web/repertoire.json
+instances/*/web/index.html
+instances/*/web/page-coder.html
+instances/*/web/vendor/
 instances/*/web/waveforms.json
 instances/*/web/waveforms/
