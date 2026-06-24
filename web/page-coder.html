@@ -115,6 +115,33 @@
       text-overflow: ellipsis;
     }
 
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .nav-link:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
     .score-viewer {
       overflow: auto;
       padding: 16px;
@@ -441,7 +468,10 @@
     <section class="score-shell">
       <header class="score-top">
         <div id="scoreName" class="score-title">Loading score...</div>
-        <span id="pageBadge" class="badge">Page -</span>
+        <div class="top-actions">
+          <a class="nav-link" href="./">Practice app</a>
+          <span id="pageBadge" class="badge">Page -</span>
+        </div>
       </header>
       <div id="scoreViewer" class="score-viewer">
         <div id="scoreStage" class="score-stage">
@@ -531,6 +561,19 @@
       const wholeSeconds = Math.floor(safe % 60);
       const millis = Math.round((safe - Math.floor(safe)) * 1000);
       return `${minutes}:${String(wholeSeconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+    }
+
+    function sectionsFromSong(song) {
+      if (!Array.isArray(song?.sections)) return [];
+      return song.sections
+        .map((section, idx) => ({
+          id: idx + 1,
+          name: String(section.name || '').trim(),
+          start: Number(section.start),
+          page: Number(section.page) || 1,
+        }))
+        .filter((section) => section.name && Number.isFinite(section.start) && section.start >= 0)
+        .sort((a, b) => a.start - b.start);
     }
 
     function readSavedState() {
@@ -795,8 +838,8 @@
       currentSong = repertoire.find((entry) => entry.song === songName) || repertoire[0];
       currentScore = currentSong?.score || null;
       pageStarts = [0];
-      sections = [];
-      nextSectionId = 1;
+      sections = sectionsFromSong(currentSong);
+      nextSectionId = sections.reduce((maxId, section) => Math.max(maxId, section.id), 0) + 1;
       actionStack = [];
       currentPage = 1;
       await loadWaveformsForSong(currentSong);
@@ -878,7 +921,7 @@
         renderMarkerList();
         renderCurrentPage();
       }
-      if (Array.isArray(saved.sections) && saved.song === currentSong?.song) {
+      if (Array.isArray(saved.sections) && saved.song === currentSong?.song && saved.sections.length) {
         sections = saved.sections
           .map((section, index) => ({
             id: Number.isInteger(section.id) ? section.id : index + 1,

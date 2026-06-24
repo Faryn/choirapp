@@ -3,48 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>choir app • Loop Spike</title>
+  <title>choir app</title>
   <style>
     :root {
-      --bg: #f6f3ee;
-      --card: rgba(255,255,255,0.94);
-      --border: #e4ded4;
-      --text: #201c18;
-      --muted: #6f675e;
-      --accent: #5f4bd8;
-      --accent-soft: #eeeafd;
-      --shadow: 0 10px 28px rgba(45, 35, 20, 0.08);
+      --bg: #f5f1e9;
+      --card: rgba(255, 254, 250, 0.96);
+      --field: #fffdf8;
+      --border: #d9d1c4;
+      --text: #191715;
+      --muted: #6d665d;
+      --accent: #17685b;
+      --accent-strong: #0f5147;
+      --accent-soft: #e3f1ec;
+      --accent-warm: #a45b20;
+      --danger: #b42318;
+      --shadow: 0 8px 24px rgba(34, 27, 18, 0.08);
     }
     * { box-sizing: border-box; }
     html { scroll-padding-top: 230px; }
-    body { font-family: system-ui, sans-serif; max-width: 980px; margin: 0 auto; padding: 18px 12px 32px; background: var(--bg); color: var(--text); }
-    .app-header { margin: 4px 0 14px; }
-    .app-title { margin: 0; font-size: clamp(28px, 5vw, 42px); letter-spacing: -0.04em; }
-    .app-subtitle { margin: 6px 0 0; max-width: 68ch; color: var(--muted); line-height: 1.4; }
+    body { font-family: system-ui, sans-serif; max-width: 1040px; margin: 0 auto; padding: 20px 14px 34px; background: var(--bg); color: var(--text); }
+    .app-header { margin: 0 0 16px; }
+    .app-title { margin: 0; font-size: clamp(30px, 5vw, 44px); letter-spacing: 0; line-height: 1; }
+    .app-subtitle { margin: 7px 0 0; max-width: 62ch; color: var(--muted); line-height: 1.45; }
     .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
-    button { padding: 9px 13px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--text); min-height: 38px; }
-    button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
+    button { padding: 9px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--text); min-height: 38px; box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 750; }
+    button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
     select, input[type="range"] { max-width: 100%; }
-    select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 10px; background: white; }
-    .panel { border: 1px solid var(--border); border-radius: 18px; padding: 14px; background: var(--card); box-shadow: var(--shadow); }
-    .player-panel { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); }
-    .player-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 6px; }
-    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
-    .song-title { margin: 2px 0 0; font-size: clamp(20px, 4vw, 30px); letter-spacing: -0.03em; }
+    select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--text); }
+    select:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid rgba(23, 104, 91, 0.35); outline-offset: 2px; }
+    .panel { border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: var(--card); box-shadow: var(--shadow); }
+    .player-panel { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(16px); }
+    .player-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 10px; }
+    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+    .song-title { margin: 2px 0 0; font-size: clamp(20px, 4vw, 30px); letter-spacing: 0; line-height: 1.1; }
     .control-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .field { display: grid; gap: 4px; min-width: 0; }
-    .field label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .field label { color: var(--muted); font-size: 12px; font-weight: 750; }
     .field select { width: 100%; }
     .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-    .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: #f1eee8; color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: #ebe4d9; color: var(--muted); font-size: 12px; font-weight: 750; white-space: nowrap; }
     .badge.accent { background: var(--accent-soft); color: var(--accent); }
+    .badge.section { background: #f4eadf; color: var(--accent-warm); }
+    .nav-link { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: var(--field); border: 1px solid var(--border); color: var(--text); font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    .nav-link:hover { border-color: var(--accent); color: var(--accent); }
     .transport-row button { min-width: 78px; }
     .speed-control { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; }
     .speed-control select { min-width: 76px; }
+    .section-loop { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 8px; align-items: center; margin: 8px 0 0; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,253,248,0.78); }
+    .section-loop label { color: var(--muted); font-size: 12px; font-weight: 800; }
     .advanced-sync { margin: 8px 0 0; border-top: 1px solid var(--border); padding-top: 8px; }
     .advanced-sync summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 800; user-select: none; }
     .advanced-sync summary:hover { color: var(--text); }
-    .tiny { color: #555; font-size: 12px; }
+    .tiny { color: var(--muted); font-size: 12px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
     .timeline-wrap { margin-top: 14px; }
@@ -52,8 +63,8 @@
     .timeline {
       position: relative;
       height: 64px;
-      border-radius: 10px;
-      background: #f7f7f7;
+      border-radius: 8px;
+      background: #faf8f3;
       border: 1px solid var(--border);
       touch-action: none;
       user-select: none;
@@ -72,16 +83,16 @@
       position: absolute;
       top: 0;
       height: 100%;
-      background: rgba(0, 0, 0, 0.18);
+      background: rgba(25, 23, 21, 0.14);
       pointer-events: none;
     }
     .loop-region {
       position: absolute;
       top: 0;
       height: 100%;
-      background: rgba(95, 75, 216, 0.18);
-      border-left: 2px solid rgba(95, 75, 216, 0.75);
-      border-right: 2px solid rgba(95, 75, 216, 0.75);
+      background: rgba(23, 104, 91, 0.16);
+      border-left: 2px solid rgba(23, 104, 91, 0.78);
+      border-right: 2px solid rgba(23, 104, 91, 0.78);
       pointer-events: none;
     }
     .playhead {
@@ -89,7 +100,7 @@
       top: 0;
       height: 100%;
       width: 2px;
-      background: #111;
+      background: var(--text);
       pointer-events: none;
     }
     .handle {
@@ -103,9 +114,9 @@
       box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
       cursor: grab;
     }
-    .handle.a { background: #1f6feb; }
-    .handle.s { background: #111; }
-    .handle.b { background: #d73a49; }
+    .handle.a { background: var(--accent); }
+    .handle.s { background: var(--text); }
+    .handle.b { background: var(--danger); }
     .handle.dragging { cursor: grabbing; }
     .score-panel { margin-top: 14px; }
     .score-header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; }
@@ -114,11 +125,11 @@
       height: min(70vh, 760px);
       min-height: 420px;
       border: 1px solid #ddd;
-      border-radius: 10px;
+      border-radius: 8px;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       touch-action: pan-y;
-      background: linear-gradient(180deg, #f2efe9 0%, #ebe5da 100%);
+      background: #ede7dc;
       padding: 10px;
     }
     .score-pages { display: grid; gap: 16px; justify-items: center; }
@@ -136,13 +147,14 @@
       html { scroll-padding-top: 178px; }
       body { padding: 0 8px 20px; }
       .app-header { display: none; }
-      .panel { padding: 10px; border-radius: 14px; }
-      .player-panel { top: 0; border-radius: 0 0 14px 14px; margin-left: -8px; margin-right: -8px; }
+      .panel { padding: 10px; border-radius: 8px; }
+      .player-panel { top: 0; border-radius: 0 0 8px 8px; margin-left: -8px; margin-right: -8px; }
       .player-head { display: grid; align-items: center; gap: 6px; margin-bottom: 4px; }
       .eyebrow { display: none; }
       .song-title { margin: 0; font-size: 18px; line-height: 1.12; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .badges { justify-content: flex-start; gap: 4px; min-width: 0; }
       .badge { min-height: 20px; padding: 2px 6px; font-size: 11px; }
+      .nav-link { min-height: 24px; padding: 2px 7px; font-size: 11px; }
       #statusBadge { display: none; }
       .control-grid { grid-template-columns: 0.95fr 1.05fr; gap: 6px; }
       .control-grid .field:first-child { grid-column: 1 / -1; }
@@ -155,6 +167,8 @@
       .transport-row label { min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
       .speed-control { min-height: 44px; flex: 1 1 100%; }
       .speed-control select { flex: 1; min-height: 36px; }
+      .section-loop { grid-template-columns: auto minmax(0, 1fr); gap: 6px; padding: 6px; }
+      .section-loop button { grid-column: 1 / -1; }
       .advanced-sync { display: none; }
       .timeline-wrap { margin-top: 6px; }
       .timeline-labels { display: none; }
@@ -171,7 +185,6 @@
 <body>
   <header class="app-header">
     <h1 class="app-title">choir app</h1>
-    <p class="app-subtitle">Practice with synced voice tracks, A/B loops, and the score in one place. Shortcuts: <b>Space</b> play/pause, <b>←/→</b> skip 5s, <b>1</b> loop start, <b>2</b> loop end.</p>
   </header>
 
   <div class="panel player-panel">
@@ -184,7 +197,9 @@
         <span id="loadedBadge" class="badge accent">0 loaded</span>
         <span id="cachedBadge" class="badge">0 cached</span>
         <span id="loopBadge" class="badge">Loop on</span>
+        <span id="sectionBadge" class="badge section hidden">Section A</span>
         <span id="statusBadge" class="badge">idle</span>
+        <a class="nav-link" href="./page-coder.html">Score tagger</a>
       </div>
     </div>
 
@@ -212,10 +227,12 @@
         Tempo
         <select id="speedSelect">
           <option value="1">100%</option>
+          <option value="0.95">95%</option>
+          <option value="0.9">90%</option>
           <option value="0.85">85%</option>
+          <option value="0.8">80%</option>
           <option value="0.75">75%</option>
-          <option value="0.6">60%</option>
-          <option value="0.5">50%</option>
+          <option value="0.7">70%</option>
         </select>
       </label>
     </div>
@@ -252,6 +269,14 @@
       <div class="tiny">Tip: drag any handle. Loop constraints are enforced: 0 ≤ A &lt; S ≤ B ≤ duration.</div>
     </div>
 
+    <div id="sectionLoopControls" class="section-loop hidden">
+      <label for="sectionStartSelect">Loop</label>
+      <select id="sectionStartSelect"></select>
+      <label for="sectionEndSelect">End</label>
+      <select id="sectionEndSelect"></select>
+      <button id="applySectionLoop" type="button" class="primary">Set loop</button>
+    </div>
+
     <div class="hidden" aria-hidden="true">
       <span id="current">0.00</span>
       <span id="duration">0.00</span>
@@ -281,9 +306,28 @@
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   const ctx = new AudioCtx();
   const CACHE_DB_NAME = 'choir-app-audio-cache';
-  const CACHE_DB_VERSION = 1;
+  const CACHE_DB_VERSION = 2;
   const CACHE_STORE = 'audio-files';
+  const PDF_CACHE_STORE = 'score-pdfs';
   const LAST_SELECTION_KEY = 'choir-app-last-selection-v1';
+  const EXAMPLE_SECTION_MARKERS = {
+    'nur-ein-wort': [
+      { name: 'A', start: 0 },
+      { name: 'B', start: 24 },
+      { name: 'C', start: 35 },
+      { name: 'D', start: 46 },
+      { name: 'E', start: 57 },
+      { name: 'F', start: 92 },
+      { name: 'H', start: 114 },
+      { name: 'I', start: 125 },
+      { name: 'J', start: 147 },
+      { name: 'K', start: 159 },
+      { name: 'L', start: 170 },
+      { name: 'M', start: 181 },
+      { name: 'P', start: 213 },
+      { name: 'Q', start: 226 },
+    ],
+  };
 
   let repertoire = [];
   let waveformCache = {};
@@ -328,6 +372,7 @@
     loadedBadge: document.getElementById('loadedBadge'),
     cachedBadge: document.getElementById('cachedBadge'),
     loopBadge: document.getElementById('loopBadge'),
+    sectionBadge: document.getElementById('sectionBadge'),
     statusBadge: document.getElementById('statusBadge'),
     songSelect: document.getElementById('songSelect'),
     groupSelect: document.getElementById('groupSelect'),
@@ -337,6 +382,10 @@
     stop: document.getElementById('stop'),
     loopEnabled: document.getElementById('loopEnabled'),
     speedSelect: document.getElementById('speedSelect'),
+    sectionLoopControls: document.getElementById('sectionLoopControls'),
+    sectionStartSelect: document.getElementById('sectionStartSelect'),
+    sectionEndSelect: document.getElementById('sectionEndSelect'),
+    applySectionLoop: document.getElementById('applySectionLoop'),
     alignMode: document.getElementById('alignMode'),
     nudge: document.getElementById('nudge'),
     nudgeVal: document.getElementById('nudgeVal'),
@@ -369,6 +418,12 @@
 
   const fmt = (n) => Number.isFinite(n) ? n.toFixed(2) : '0.00';
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const fmtShortTime = (seconds) => {
+    const safe = Number.isFinite(seconds) ? Math.max(0, Math.round(seconds)) : 0;
+    const mins = Math.floor(safe / 60);
+    const secs = safe % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  };
   nativeAudio.preload = 'auto';
   nativeAudio.crossOrigin = 'anonymous';
   nativeAudio.preservesPitch = true;
@@ -381,6 +436,116 @@
     .replace(/[^a-zA-Z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .toLowerCase() || 'song';
+
+  function normalizedSections(entry = currentSongEntry) {
+    if (currentGroup !== 'main') return [];
+    const source = Array.isArray(entry?.sections) && entry.sections.length
+      ? entry.sections
+      : EXAMPLE_SECTION_MARKERS[songSlug(entry?.song)];
+    if (!source?.length) return [];
+    const d = dur();
+    return source
+      .map((item) => ({
+        name: String(item.name || item.label || '').trim(),
+        start: Number(item.start ?? item.time ?? item.at ?? 0),
+      }))
+      .filter((item) => item.name && Number.isFinite(item.start) && item.start >= 0 && (!d || item.start <= d + 0.25))
+      .sort((a, b) => a.start - b.start);
+  }
+
+  function currentSectionAt(seconds = S) {
+    const sections = normalizedSections();
+    if (!sections.length) return null;
+    let current = sections[0];
+    for (const section of sections) {
+      if (section.start <= seconds + 0.05) current = section;
+      else break;
+    }
+    return current;
+  }
+
+  function snapToSegmentMarker(seconds) {
+    const d = dur();
+    const sections = normalizedSections();
+    if (!d || !sections.length || !Number.isFinite(seconds)) return seconds;
+
+    const rect = el.timeline.getBoundingClientRect();
+    const threshold = d * (12 / Math.max(rect.width, 1));
+    const markers = [...sections.map((section) => section.start), d]
+      .filter((value) => Number.isFinite(value) && value >= 0 && value <= d);
+    let best = seconds;
+    let bestDistance = Infinity;
+    markers.forEach((marker) => {
+      const distance = Math.abs(marker - seconds);
+      if (distance < bestDistance) {
+        best = marker;
+        bestDistance = distance;
+      }
+    });
+    return bestDistance <= threshold ? best : seconds;
+  }
+
+  function fallbackVersionGroup(file) {
+    const group = String(file?.group || 'main');
+    if (/^(champion|playback|reference)$/i.test(group)) return 'main';
+    return group || 'main';
+  }
+
+  function mainDurationForEntry(entry = currentSongEntry) {
+    const durations = safariFriendlyFiles(entry?.files || [])
+      .filter((file) => fallbackVersionGroup(file) === 'main')
+      .filter((file) => !/slow|schneckentempo|coda/i.test(file.name || ''))
+      .map((file) => Number(waveformCache[file.url]?.duration || 0))
+      .filter((duration) => duration >= 45)
+      .sort((a, b) => a - b);
+    if (!durations.length) return 0;
+
+    const clusters = [];
+    for (const duration of durations) {
+      const cluster = clusters.find((item) => Math.abs(item.center - duration) <= 5);
+      if (cluster) {
+        cluster.values.push(duration);
+        cluster.center = cluster.values.reduce((sum, value) => sum + value, 0) / cluster.values.length;
+      } else {
+        clusters.push({ center: duration, values: [duration] });
+      }
+    }
+    clusters.sort((a, b) => b.values.length - a.values.length || b.center - a.center);
+    const values = clusters[0].values.slice().sort((a, b) => a - b);
+    return values[Math.floor(values.length / 2)] || 0;
+  }
+
+  function versionGroupForFile(file, entry = currentSongEntry) {
+    const fallback = fallbackVersionGroup(file);
+    if (fallback !== 'main') return fallback;
+
+    const name = String(file?.name || '');
+    if (/slow|schneckentempo/i.test(name)) return 'slow';
+    if (/coda/i.test(name)) return 'coda';
+
+    const mainDuration = mainDurationForEntry(entry);
+    const duration = Number(waveformCache[file?.url]?.duration || 0);
+    if (!mainDuration || !duration) return 'main';
+
+    const tolerance = Math.max(3, mainDuration * 0.025);
+    if (Math.abs(duration - mainDuration) <= tolerance) return 'main';
+    if (duration < mainDuration * 0.55) return 'short';
+    return 'alternate';
+  }
+
+  function versionGroupsForEntry(entry = currentSongEntry) {
+    const seen = new Set();
+    safariFriendlyFiles(entry?.files || []).forEach((file) => seen.add(versionGroupForFile(file, entry)));
+    return [...seen].sort((a, b) => {
+      if (a === 'main') return -1;
+      if (b === 'main') return 1;
+      return a.localeCompare(b);
+    });
+  }
+
+  function filesForCurrentVersion(entry = currentSongEntry) {
+    return safariFriendlyFiles(entry?.files || []).filter((file) => versionGroupForFile(file, entry) === currentGroup);
+  }
 
   function readLastSelection() {
     try {
@@ -466,7 +631,10 @@
       const pdfjs = await loadPdfJs();
       if (token !== scoreRenderToken) return;
 
-      const pdf = await pdfjs.getDocument({ url }).promise;
+      const pdfData = await loadPdfData(url);
+      if (token !== scoreRenderToken) return;
+
+      const pdf = await pdfjs.getDocument({ data: pdfData }).promise;
       if (token !== scoreRenderToken) return;
 
       el.scorePages.innerHTML = '';
@@ -527,18 +695,21 @@
     el.scorePanel.classList.remove('hidden');
   }
 
-  async function loadWaveformsForSong(entry) {
+  async function loadWaveformsForSong(entry, loadToken = currentLoadToken) {
     const key = entry?.song || '';
     if (waveformSongKey === key) return;
     waveformSongKey = key;
     waveformCache = {};
     if (!entry) return;
+    const isCurrentLoad = () => loadToken === currentLoadToken && waveformSongKey === key;
 
     const url = `./waveforms/${songSlug(entry.song)}.json`;
     try {
       const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) {
-        waveformCache = await res.json();
+        const nextCache = await res.json();
+        if (!isCurrentLoad()) return;
+        waveformCache = nextCache;
         return;
       }
     } catch (err) {
@@ -552,9 +723,11 @@
         aggregateWaveformCache = res.ok ? await res.json() : {};
       }
       const urls = new Set((entry.files || []).map((file) => file.url));
+      if (!isCurrentLoad()) return;
       waveformCache = Object.fromEntries(Object.entries(aggregateWaveformCache).filter(([fileUrl]) => urls.has(fileUrl)));
     } catch (err) {
       console.warn('aggregate waveform fallback failed', err);
+      if (!isCurrentLoad()) return;
       waveformCache = {};
     }
   }
@@ -567,6 +740,9 @@
         if (!db.objectStoreNames.contains(CACHE_STORE)) {
           db.createObjectStore(CACHE_STORE, { keyPath: 'key' });
         }
+        if (!db.objectStoreNames.contains(PDF_CACHE_STORE)) {
+          db.createObjectStore(PDF_CACHE_STORE, { keyPath: 'key' });
+        }
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -574,10 +750,14 @@
   }
 
   async function cacheGet(key) {
+    return cacheGetFrom(CACHE_STORE, key);
+  }
+
+  async function cacheGetFrom(storeName, key) {
     const db = await openCacheDb();
     return await new Promise((resolve, reject) => {
-      const tx = db.transaction(CACHE_STORE, 'readonly');
-      const store = tx.objectStore(CACHE_STORE);
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
       const req = store.get(key);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
@@ -585,14 +765,41 @@
   }
 
   async function cachePut(record) {
+    return cachePutTo(CACHE_STORE, record);
+  }
+
+  async function cachePutTo(storeName, record) {
     const db = await openCacheDb();
     return await new Promise((resolve, reject) => {
-      const tx = db.transaction(CACHE_STORE, 'readwrite');
-      const store = tx.objectStore(CACHE_STORE);
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
       const req = store.put(record);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
+  }
+
+  async function loadPdfData(url) {
+    try {
+      const cached = await cacheGetFrom(PDF_CACHE_STORE, url);
+      if (cached?.arrayBuffer) return cached.arrayBuffer.slice(0);
+    } catch (err) {
+      console.warn('PDF cache read failed', err);
+    }
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`PDF HTTP ${res.status}`);
+    const arrayBuffer = await res.arrayBuffer();
+    try {
+      await cachePutTo(PDF_CACHE_STORE, {
+        key: url,
+        arrayBuffer,
+        cachedAt: Date.now(),
+      });
+    } catch (err) {
+      console.warn('PDF cache write failed', err);
+    }
+    return arrayBuffer.slice(0);
   }
 
   function detectActiveRange(buf) {
@@ -731,6 +938,48 @@
     const peaks = cached?.waveform || null;
     const mid = h / 2;
 
+    const drawSectionMarkers = () => {
+      const sections = normalizedSections();
+      const d = dur();
+      if (!sections.length || !d) return;
+
+      const labelMinGap = w < 520 * dpr ? 34 * dpr : 22 * dpr;
+      let lastLabelX = -Infinity;
+      ctx2d.save();
+      ctx2d.textAlign = 'center';
+      ctx2d.textBaseline = 'middle';
+      ctx2d.font = `${Math.max(10, Math.round(10 * dpr))}px system-ui, sans-serif`;
+
+      sections.forEach((section, idx) => {
+        const x = clamp((section.start / d) * w, 0, w);
+        ctx2d.strokeStyle = 'rgba(36, 94, 82, 0.46)';
+        ctx2d.lineWidth = Math.max(1, dpr);
+        ctx2d.beginPath();
+        ctx2d.moveTo(x, 0);
+        ctx2d.lineTo(x, h);
+        ctx2d.stroke();
+
+        const hasRoom = x - lastLabelX >= labelMinGap || idx === 0 || idx === sections.length - 1;
+        if (hasRoom) {
+          const pillW = Math.max(16 * dpr, section.name.length * 7 * dpr + 8 * dpr);
+          const pillH = 16 * dpr;
+          const pillX = clamp(x - pillW / 2, 2 * dpr, w - pillW - 2 * dpr);
+          const pillY = 4 * dpr;
+          ctx2d.fillStyle = 'rgba(255, 254, 250, 0.9)';
+          ctx2d.strokeStyle = 'rgba(36, 94, 82, 0.35)';
+          ctx2d.lineWidth = Math.max(1, dpr);
+          ctx2d.beginPath();
+          ctx2d.roundRect(pillX, pillY, pillW, pillH, 6 * dpr);
+          ctx2d.fill();
+          ctx2d.stroke();
+          ctx2d.fillStyle = '#245e52';
+          ctx2d.fillText(section.name, pillX + pillW / 2, pillY + pillH / 2 + 0.5 * dpr);
+          lastLabelX = pillX + pillW;
+        }
+      });
+      ctx2d.restore();
+    };
+
     ctx2d.strokeStyle = '#9aa3b2';
     ctx2d.lineWidth = Math.max(1, dpr);
     ctx2d.beginPath();
@@ -746,10 +995,14 @@
         ctx2d.lineTo(i, y2);
       }
       ctx2d.stroke();
+      drawSectionMarkers();
       return;
     }
 
-    if (!buffer) return;
+    if (!buffer) {
+      drawSectionMarkers();
+      return;
+    }
     const data = buffer.getChannelData(0);
     const step = Math.max(1, Math.floor(data.length / w));
     for (let i = 0; i < w; i++) {
@@ -768,6 +1021,7 @@
       ctx2d.lineTo(i, y2);
     }
     ctx2d.stroke();
+    drawSectionMarkers();
   }
 
   function render() {
@@ -1032,6 +1286,9 @@
     el.cachedBadge.textContent = compact ? `C ${cachedTrackCount()}/${total}` : `${cachedTrackCount()}/${total} cached`;
     el.loopBadge.textContent = el.loopEnabled.checked ? 'Loop on' : 'Loop off';
     el.loopBadge.classList.toggle('accent', el.loopEnabled.checked);
+    const section = currentSectionAt();
+    el.sectionBadge.classList.toggle('hidden', !section);
+    if (section) el.sectionBadge.textContent = `${section.name} · ${fmtShortTime(section.start)}`;
     el.statusBadge.textContent = el.status.textContent || 'idle';
   }
 
@@ -1053,11 +1310,15 @@
 
   function inferTrackSection(name) {
     const n = String(name || '').toLowerCase();
+    const tokens = n.split(/[^a-z0-9]+/).filter(Boolean);
+    const hasVoiceToken = (letters) => tokens.some((token) => new RegExp(`^${letters}(?:\\d+(?:_?\\d+)*)?$`).test(token));
     if (/tutti|playback|original|aufnahme|demo|reference|chor/.test(n)) return 'Tutti / Reference';
-    if (/sopran|soprano|\bs[0-9]?\b|[_-]s[0-9]?[_-]/.test(n)) return 'Soprano';
-    if (/alt|alto|mezzo|\ba[0-9]?\b|[_-]a[0-9]?[_-]/.test(n)) return 'Alto / Mezzo';
-    if (/tenor|\bt[0-9]?\b|[_-]t[0-9]?[_-]/.test(n)) return 'Tenor';
-    if (/bass|bariton|\bb[0-9]?\b|[_-]b[0-9]?[_-]/.test(n)) return 'Bass';
+    if (/beatbox/.test(n)) return 'Beatbox';
+    if (/sopran|soprano/.test(n) || hasVoiceToken('s')) return 'Soprano';
+    if (/alt|alto/.test(n) || hasVoiceToken('a')) return 'Alto';
+    if (/mezzo/.test(n) || hasVoiceToken('m')) return 'Mezzo';
+    if (/tenor/.test(n) || hasVoiceToken('t')) return 'Tenor';
+    if (/bass|bariton/.test(n) || hasVoiceToken('b')) return 'Bass';
     return 'Other';
   }
 
@@ -1073,7 +1334,7 @@
   }
 
   function populateGroupSelect() {
-    const groups = [...new Set((currentSongEntry?.files || []).map((f) => f.group || 'main'))];
+    const groups = versionGroupsForEntry();
     el.groupSelect.innerHTML = '';
     groups.forEach((group) => {
       const opt = document.createElement('option');
@@ -1092,7 +1353,7 @@
 
   function populateTrackSelect() {
     el.trackSelect.innerHTML = '';
-    const sectionOrder = ['Tutti / Reference', 'Soprano', 'Alto / Mezzo', 'Tenor', 'Bass', 'Other'];
+    const sectionOrder = ['Tutti / Reference', 'Soprano', 'Alto', 'Mezzo', 'Tenor', 'Bass', 'Beatbox', 'Other'];
     const sections = new Map(sectionOrder.map((section) => [section, []]));
     songTrackManifest.forEach((t, idx) => {
       const section = inferTrackSection(t.name);
@@ -1115,6 +1376,76 @@
     el.trackSelect.disabled = songTrackManifest.length === 0;
     if (currentTrackIndex >= 0) el.trackSelect.value = String(currentTrackIndex);
     updateNudgeUI();
+  }
+
+  function sectionEndTime(sections, idx) {
+    return sections[idx + 1]?.start ?? dur();
+  }
+
+  function sectionOptionLabel(section) {
+    return `${section.name} · ${fmtShortTime(section.start)}`;
+  }
+
+  function sectionEndOptionLabel(sections, idx) {
+    return `${sections[idx].name} · ${fmtShortTime(sectionEndTime(sections, idx))}`;
+  }
+
+  function rebuildSectionEndOptions() {
+    const sections = normalizedSections();
+    const startIdx = Number(el.sectionStartSelect.value) || 0;
+    const previousEnd = Number(el.sectionEndSelect.value);
+    el.sectionEndSelect.innerHTML = '';
+    sections.slice(startIdx).forEach((section, offset) => {
+      const idx = startIdx + offset;
+      const opt = document.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = sectionEndOptionLabel(sections, idx);
+      el.sectionEndSelect.appendChild(opt);
+    });
+    const nextEnd = Number.isInteger(previousEnd) && previousEnd >= startIdx ? previousEnd : startIdx;
+    el.sectionEndSelect.value = String(Math.min(nextEnd, sections.length - 1));
+  }
+
+  function populateSectionLoopControls() {
+    const sections = normalizedSections();
+    const d = dur();
+    if (!sections.length || !d) {
+      el.sectionLoopControls.classList.add('hidden');
+      el.sectionStartSelect.innerHTML = '';
+      el.sectionEndSelect.innerHTML = '';
+      return;
+    }
+
+    const previousStart = Number(el.sectionStartSelect.value);
+    el.sectionStartSelect.innerHTML = '';
+    sections.forEach((section, idx) => {
+      const opt = document.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = sectionOptionLabel(section);
+      el.sectionStartSelect.appendChild(opt);
+    });
+    el.sectionStartSelect.value = String(
+      Number.isInteger(previousStart) && previousStart >= 0 && previousStart < sections.length ? previousStart : 0
+    );
+    rebuildSectionEndOptions();
+    el.sectionLoopControls.classList.remove('hidden');
+  }
+
+  function applySectionLoopSelection() {
+    const sections = normalizedSections();
+    if (!sections.length || !dur()) return;
+    const startIdx = clamp(Number(el.sectionStartSelect.value) || 0, 0, sections.length - 1);
+    const endIdx = clamp(Number(el.sectionEndSelect.value) || startIdx, startIdx, sections.length - 1);
+    A = sections[startIdx].start;
+    B = sectionEndTime(sections, endIdx);
+    S = A;
+    pausedAt = S;
+    el.loopEnabled.checked = true;
+    enforce();
+    render();
+    drawWaveform();
+    if (isPlaying) playFrom(S);
+    el.status.textContent = `looping ${sections[startIdx].name} to ${sections[endIdx].name}`;
   }
 
   function applyBuffer(newBuffer, preserveState = true, prevMasterPos = null) {
@@ -1348,26 +1679,58 @@
     stopPlayback();
     isPlaying = false;
     populateGroupSelect();
-    songTrackManifest = safariFriendlyFiles(entry.files).filter((f) => (f.group || 'main') === currentGroup);
-    const preferredTrackIndex = songTrackManifest.findIndex((f) => (
+    songTrackManifest = filesForCurrentVersion(entry);
+    let preferredTrackIndex = songTrackManifest.findIndex((f) => (
       (options.preferredTrackUrl && f.url === options.preferredTrackUrl)
       || (options.preferredTrackName && f.name === options.preferredTrackName)
     ));
-    await loadWaveformsForSong(entry);
     trackOffsets = songTrackManifest.map(() => 0);
     trackCacheState = songTrackManifest.map(() => false);
     refDurationSec = 0;
-    currentTrackIndex = -1;
+    currentTrackIndex = songTrackManifest.length ? 0 : -1;
+    tracks = [];
     buffer = null;
+    A = 0;
+    B = 0;
+    S = 0;
+    pausedAt = 0;
+    loopCount = 0;
+    el.loopCount.textContent = '0';
 
     if (songTrackManifest.length === 0) {
-      tracks = [];
       el.trackSelect.innerHTML = '';
       el.trackSelect.disabled = true;
+      populateSectionLoopControls();
       render();
       el.status.textContent = 'no mp3/m4a files';
       return;
     }
+
+    populateTrackSelect();
+    el.trackSelect.value = '0';
+    render();
+    await loadWaveformsForSong(entry, loadToken);
+    if (loadToken !== currentLoadToken) return;
+    populateGroupSelect();
+    songTrackManifest = filesForCurrentVersion(entry);
+    preferredTrackIndex = songTrackManifest.findIndex((f) => (
+      (options.preferredTrackUrl && f.url === options.preferredTrackUrl)
+      || (options.preferredTrackName && f.name === options.preferredTrackName)
+    ));
+    trackOffsets = songTrackManifest.map(() => 0);
+    trackCacheState = songTrackManifest.map(() => false);
+    tracks = [];
+    currentTrackIndex = songTrackManifest.length ? 0 : -1;
+    buffer = null;
+    const firstMeta = songTrackManifest[0] ? waveformCache[songTrackManifest[0].url] : null;
+    refDurationSec = firstMeta?.duration || 0;
+    refActiveStartSec = firstMeta?.activeStart || 0;
+    refActiveEndSec = firstMeta?.activeEnd || refDurationSec;
+    if (refDurationSec) B = refDurationSec;
+    populateTrackSelect();
+    el.trackSelect.value = '0';
+    populateSectionLoopControls();
+    render();
 
     const cacheKeyForSongGroup = `${songKey}::${currentGroup}`;
     const cachedSong = decodedSongCache.get(cacheKeyForSongGroup);
@@ -1389,6 +1752,7 @@
       loopCount = 0;
       el.loopCount.textContent = '0';
       enforce();
+      populateSectionLoopControls();
       render();
       if (buffer) drawWaveform();
       el.status.textContent = `${entry.song} loaded from memory (${tracks.filter(t => t?.buffer).length}/${songTrackManifest.length} tracks)`;
@@ -1396,18 +1760,9 @@
       return;
     }
 
-    tracks = [];
-    currentTrackIndex = 0;
-    populateTrackSelect();
     await inspectCachedTracks(loadToken);
     if (loadToken !== currentLoadToken) return;
     el.trackSelect.value = '0';
-    A = 0;
-    B = 0;
-    S = 0;
-    pausedAt = 0;
-    loopCount = 0;
-    el.loopCount.textContent = '0';
     render();
     el.status.textContent = `loading first track of ${entry.song}...`;
 
@@ -1421,6 +1776,7 @@
       buffer = first?.buffer || null;
       B = dur();
       enforce();
+      populateSectionLoopControls();
       render();
       drawWaveform();
       rememberDecodedSong();
@@ -1455,6 +1811,7 @@
     pausedAt = clamp(prevMasterPos, 0, dur() || prevMasterPos || 0);
     S = clamp(pausedAt, A, B || dur() || pausedAt || 0);
     enforce();
+    populateSectionLoopControls();
     render();
     if (buffer) {
       drawWaveform();
@@ -1545,6 +1902,12 @@
       : `tempo ${Math.round(playbackRate * 100)}%`;
   });
 
+  el.sectionStartSelect.addEventListener('change', () => {
+    rebuildSectionEndOptions();
+  });
+
+  el.applySectionLoop.addEventListener('click', applySectionLoopSelection);
+
   el.nudge.addEventListener('input', () => {
     if (currentTrackIndex < 0) return;
     const ms = Number(el.nudge.value) || 0;
@@ -1572,7 +1935,6 @@
     const idx = Number(el.songSelect.value);
     if (!Number.isInteger(idx) || idx < 0 || idx >= repertoire.length) return;
     try {
-      await ctx.resume();
       await loadSongByIndex(idx);
     } catch (err) {
       console.error(err);
@@ -1586,7 +1948,6 @@
     const idx = repertoire.findIndex((item) => item.song === currentSongEntry.song);
     if (idx < 0) return;
     try {
-      await ctx.resume();
       await loadSongByIndex(idx);
     } catch (err) {
       console.error(err);
@@ -1669,7 +2030,7 @@
 
     if (e.code === 'Digit1') {
       e.preventDefault();
-      A = clamp(currentPos(), 0, Math.max(0, B - minLoopLen));
+      A = clamp(snapToSegmentMarker(currentPos()), 0, Math.max(0, B - minLoopLen));
       if (S < A) S = A;
       pausedAt = clamp(pausedAt, A, dur());
       enforce();
@@ -1680,7 +2041,7 @@
 
     if (e.code === 'Digit2') {
       e.preventDefault();
-      B = clamp(currentPos(), Math.min(dur(), A + minLoopLen), dur());
+      B = clamp(snapToSegmentMarker(currentPos()), Math.min(dur(), A + minLoopLen), dur());
       if (S > B) S = B;
       pausedAt = clamp(pausedAt, 0, B);
       enforce();
@@ -1693,7 +2054,7 @@
   let drag = null;
   function setFromClientX(clientX) {
     if (!buffer || !drag) return;
-    const v = xToSec(clientX);
+    const v = snapToSegmentMarker(xToSec(clientX));
     if (drag === 'A') {
       A = Math.min(v, B - minLoopLen);
       if (S < A) S = A;

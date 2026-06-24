@@ -1,0 +1,13 @@
+{
+  "schema": "choir-app-sections-v1",
+  "sections": [
+    { "name": "1", "start": 0 },
+    { "name": "2", "start": 34 },
+    { "name": "3", "start": 55 },
+    { "name": "4", "start": 71 },
+    { "name": "5", "start": 87 },
+    { "name": "6", "start": 97 },
+    { "name": "7", "start": 113 },
+    { "name": "8", "start": 182 }
+  ]
+}

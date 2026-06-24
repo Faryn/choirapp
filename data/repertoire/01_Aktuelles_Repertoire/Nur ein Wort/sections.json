@@ -1,0 +1,19 @@
+{
+  "schema": "choir-app-sections-v1",
+  "sections": [
+    { "name": "A", "start": 0 },
+    { "name": "B", "start": 24 },
+    { "name": "C", "start": 35 },
+    { "name": "D", "start": 46 },
+    { "name": "E", "start": 57 },
+    { "name": "F", "start": 92 },
+    { "name": "H", "start": 114 },
+    { "name": "I", "start": 125 },
+    { "name": "J", "start": 147 },
+    { "name": "K", "start": 159 },
+    { "name": "L", "start": 170 },
+    { "name": "M", "start": 181 },
+    { "name": "P", "start": 213 },
+    { "name": "Q", "start": 226 }
+  ]
+}

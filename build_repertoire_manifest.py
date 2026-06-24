@@ -54,12 +54,6 @@ def infer_group(display: str) -> str:
         return 'coda'
     if 'slow' in n or 'schneckentempo' in n:
         return 'slow'
-    if 'champion' in n or 'profi' in n:
-        return 'champion'
-    if 'playback' in n:
-        return 'playback'
-    if 'original' in n or 'demo' in n:
-        return 'reference'
     return 'main'
 
 
@@ -70,6 +64,26 @@ def score_sort_key(item: dict) -> tuple:
         0 if 'noten' in name else 1,
         name,
     )
+
+
+def load_sections(song_dir: Path) -> list[dict]:
+    path = song_dir / "sections.json"
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    raw_sections = data if isinstance(data, list) else data.get("sections", [])
+    sections = []
+    for item in raw_sections:
+        name = str(item.get("name", "")).strip()
+        try:
+            start = float(item.get("start"))
+        except (TypeError, ValueError):
+            continue
+        if not name or start < 0:
+            continue
+        sections.append({"name": name, "start": start})
+    return sorted(sections, key=lambda item: item["start"])
+
 
 def main() -> None:
     args = parse_args()
@@ -119,6 +133,9 @@ def main() -> None:
             if score_files:
                 entry['score'] = score_files[0]
                 entry['scoreCount'] = len(score_files)
+            sections = load_sections(song_dir)
+            if sections:
+                entry['sections'] = sections
             manifest.append(entry)
 
     out.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
