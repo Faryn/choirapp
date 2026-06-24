@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 from pathlib import Path
 
@@ -168,9 +169,16 @@ def build_metadata(source_root: Path, web_dir: Path, include_waveforms: bool, dr
         ], dry_run=dry_run)
 
 
-def http_get(url: str) -> str:
-    with urllib.request.urlopen(url, timeout=5) as response:
-        return response.read().decode("utf-8")
+def http_get(url: str, attempts: int = 8, delay: float = 0.35) -> str:
+    last_error = None
+    for _ in range(attempts):
+        try:
+            with urllib.request.urlopen(url, timeout=5) as response:
+                return response.read().decode("utf-8")
+        except OSError as err:
+            last_error = err
+            time.sleep(delay)
+    raise RuntimeError(f"HTTP check failed for {url}: {last_error}")
 
 
 def smoke_check(instance: str) -> None:
