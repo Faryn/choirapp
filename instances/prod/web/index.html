@@ -1,0 +1,1806 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>choir app • Loop Spike</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --card: rgba(255,255,255,0.94);
+      --border: #e4ded4;
+      --text: #201c18;
+      --muted: #6f675e;
+      --accent: #5f4bd8;
+      --accent-soft: #eeeafd;
+      --shadow: 0 10px 28px rgba(45, 35, 20, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-padding-top: 230px; }
+    body { font-family: system-ui, sans-serif; max-width: 980px; margin: 0 auto; padding: 18px 12px 32px; background: var(--bg); color: var(--text); }
+    .app-header { margin: 4px 0 14px; }
+    .app-title { margin: 0; font-size: clamp(28px, 5vw, 42px); letter-spacing: -0.04em; }
+    .app-subtitle { margin: 6px 0 0; max-width: 68ch; color: var(--muted); line-height: 1.4; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+    button { padding: 9px 13px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--text); min-height: 38px; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
+    select, input[type="range"] { max-width: 100%; }
+    select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 10px; background: white; }
+    .panel { border: 1px solid var(--border); border-radius: 18px; padding: 14px; background: var(--card); box-shadow: var(--shadow); }
+    .player-panel { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); }
+    .player-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 6px; }
+    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+    .song-title { margin: 2px 0 0; font-size: clamp(20px, 4vw, 30px); letter-spacing: -0.03em; }
+    .control-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .field { display: grid; gap: 4px; min-width: 0; }
+    .field label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .field select { width: 100%; }
+    .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: #f1eee8; color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .badge.accent { background: var(--accent-soft); color: var(--accent); }
+    .transport-row button { min-width: 78px; }
+    .speed-control { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; }
+    .speed-control select { min-width: 76px; }
+    .advanced-sync { margin: 8px 0 0; border-top: 1px solid var(--border); padding-top: 8px; }
+    .advanced-sync summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 800; user-select: none; }
+    .advanced-sync summary:hover { color: var(--text); }
+    .tiny { color: #555; font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .timeline-wrap { margin-top: 14px; }
+    .timeline-labels { display: flex; justify-content: space-between; font-size: 12px; color: #555; }
+    .timeline {
+      position: relative;
+      height: 64px;
+      border-radius: 10px;
+      background: #f7f7f7;
+      border: 1px solid var(--border);
+      touch-action: none;
+      user-select: none;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .wave {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.9;
+    }
+    .shade {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+    }
+    .loop-region {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: rgba(95, 75, 216, 0.18);
+      border-left: 2px solid rgba(95, 75, 216, 0.75);
+      border-right: 2px solid rgba(95, 75, 216, 0.75);
+      pointer-events: none;
+    }
+    .playhead {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      width: 2px;
+      background: #111;
+      pointer-events: none;
+    }
+    .handle {
+      position: absolute;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+      cursor: grab;
+    }
+    .handle.a { background: #1f6feb; }
+    .handle.s { background: #111; }
+    .handle.b { background: #d73a49; }
+    .handle.dragging { cursor: grabbing; }
+    .score-panel { margin-top: 14px; }
+    .score-header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; }
+    .score-actions { display: flex; align-items: center; gap: 8px; }
+    .score-viewer {
+      height: min(70vh, 760px);
+      min-height: 420px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      background: linear-gradient(180deg, #f2efe9 0%, #ebe5da 100%);
+      padding: 10px;
+    }
+    .score-pages { display: grid; gap: 16px; justify-items: center; }
+    .score-page {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      background: white;
+      border-radius: 3px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08), 0 12px 28px rgba(0,0,0,0.16);
+    }
+    .score-message { padding: 18px; text-align: center; color: #555; }
+    .hidden { display: none; }
+    @media (max-width: 720px) {
+      html { scroll-padding-top: 178px; }
+      body { padding: 0 8px 20px; }
+      .app-header { display: none; }
+      .panel { padding: 10px; border-radius: 14px; }
+      .player-panel { top: 0; border-radius: 0 0 14px 14px; margin-left: -8px; margin-right: -8px; }
+      .player-head { display: grid; align-items: center; gap: 6px; margin-bottom: 4px; }
+      .eyebrow { display: none; }
+      .song-title { margin: 0; font-size: 18px; line-height: 1.12; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .badges { justify-content: flex-start; gap: 4px; min-width: 0; }
+      .badge { min-height: 20px; padding: 2px 6px; font-size: 11px; }
+      #statusBadge { display: none; }
+      .control-grid { grid-template-columns: 0.95fr 1.05fr; gap: 6px; }
+      .control-grid .field:first-child { grid-column: 1 / -1; }
+      .field { gap: 2px; }
+      .field label { font-size: 10px; }
+      select { padding: 5px 7px; border-radius: 8px; font-size: 13px; }
+      .row { gap: 6px; margin: 6px 0; }
+      button { padding: 9px 12px; min-height: 44px; }
+      .transport-row button { flex: 1 1 0; min-width: 0; }
+      .transport-row label { min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
+      .speed-control { min-height: 44px; flex: 1 1 100%; }
+      .speed-control select { flex: 1; min-height: 36px; }
+      .advanced-sync { display: none; }
+      .timeline-wrap { margin-top: 6px; }
+      .timeline-labels { display: none; }
+      .timeline { height: 46px; margin-top: 0; }
+      .handle { width: 22px; height: 22px; }
+      .timeline-wrap > .tiny { display: none; }
+      .score-panel { margin-top: 8px; }
+      .score-header { margin-bottom: 6px; }
+      .score-viewer { height: calc(100svh - 214px); min-height: 350px; padding: 6px; }
+      .score-pages { gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <h1 class="app-title">choir app</h1>
+    <p class="app-subtitle">Practice with synced voice tracks, A/B loops, and the score in one place. Shortcuts: <b>Space</b> play/pause, <b>←/→</b> skip 5s, <b>1</b> loop start, <b>2</b> loop end.</p>
+  </header>
+
+  <div class="panel player-panel">
+    <div class="player-head">
+      <div>
+        <div class="eyebrow">Now practicing</div>
+        <h2 id="currentSongTitle" class="song-title">Loading…</h2>
+      </div>
+      <div class="badges" aria-label="Playback status">
+        <span id="loadedBadge" class="badge accent">0 loaded</span>
+        <span id="cachedBadge" class="badge">0 cached</span>
+        <span id="loopBadge" class="badge">Loop on</span>
+        <span id="statusBadge" class="badge">idle</span>
+      </div>
+    </div>
+
+    <div class="control-grid">
+      <div class="field">
+        <label for="songSelect">Song</label>
+        <select id="songSelect"></select>
+      </div>
+      <div class="field">
+        <label for="groupSelect">Version</label>
+        <select id="groupSelect"></select>
+      </div>
+      <div class="field">
+        <label for="trackSelect">Track</label>
+        <select id="trackSelect"></select>
+      </div>
+    </div>
+
+    <div class="row transport-row">
+      <button id="play" class="primary">Play</button>
+      <button id="pause">Pause</button>
+      <button id="stop">Stop</button>
+      <label><input id="loopEnabled" type="checkbox" checked /> Loop</label>
+      <label class="speed-control" title="Slower tempos use browser pitch preservation when available">
+        Tempo
+        <select id="speedSelect">
+          <option value="1">100%</option>
+          <option value="0.85">85%</option>
+          <option value="0.75">75%</option>
+          <option value="0.6">60%</option>
+          <option value="0.5">50%</option>
+        </select>
+      </label>
+    </div>
+
+    <details class="advanced-sync">
+      <summary>Advanced sync</summary>
+      <div class="row tiny">
+        <label><input id="alignMode" type="checkbox" checked /> Active-range align</label>
+        <span>Track nudge:</span>
+        <input id="nudge" type="range" min="-500" max="500" step="1" value="0" />
+        <span class="mono" id="nudgeVal">0 ms</span>
+        <button id="syncNow" type="button">Sync now</button>
+        <label><input id="autoSync" type="checkbox" checked /> Auto-sync</label>
+        <button id="nudgeReset" type="button">Reset nudge</button>
+      </div>
+    </details>
+
+    <div class="timeline-wrap">
+      <div class="timeline-labels">
+        <div>A: <span class="mono" id="aVal">0.00</span>s</div>
+        <div>S: <span class="mono" id="sVal">0.00</span>s</div>
+        <div>B: <span class="mono" id="bVal">0.00</span>s</div>
+      </div>
+      <div id="timeline" class="timeline">
+        <canvas id="wave" class="wave"></canvas>
+        <div id="shadeLeft" class="shade"></div>
+        <div id="loopRegion" class="loop-region"></div>
+        <div id="shadeRight" class="shade"></div>
+        <div id="playheadLine" class="playhead"></div>
+        <div id="hA" class="handle a" title="Loop start (A)"></div>
+        <div id="hS" class="handle s" title="Seek/playhead (S)"></div>
+        <div id="hB" class="handle b" title="Loop end (B)"></div>
+      </div>
+      <div class="tiny">Tip: drag any handle. Loop constraints are enforced: 0 ≤ A &lt; S ≤ B ≤ duration.</div>
+    </div>
+
+    <div class="hidden" aria-hidden="true">
+      <span id="current">0.00</span>
+      <span id="duration">0.00</span>
+      <span id="loopCount">0</span>
+      <span id="status">idle</span>
+    </div>
+  </div>
+
+  <div id="scorePanel" class="panel score-panel hidden">
+    <div class="score-header">
+      <div>
+        <b>Score</b>
+        <span class="tiny" id="scoreName"></span>
+      </div>
+      <div class="score-actions">
+        <span id="pageBadge" class="badge">Page —</span>
+        <a class="tiny" id="scoreOpen" href="#" target="_blank" rel="noopener">Open PDF</a>
+      </div>
+    </div>
+    <div id="scoreViewer" class="score-viewer">
+      <div id="scorePages" class="score-pages"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AudioCtx();
+  const CACHE_DB_NAME = 'choir-app-audio-cache';
+  const CACHE_DB_VERSION = 1;
+  const CACHE_STORE = 'audio-files';
+  const LAST_SELECTION_KEY = 'choir-app-last-selection-v1';
+
+  let repertoire = [];
+  let waveformCache = {};
+  let waveformSongKey = null;
+  let aggregateWaveformCache = null;
+  let tracks = [];
+  let currentSongEntry = null;
+  let currentScoreUrl = '';
+  let scoreRenderToken = 0;
+  let pdfjsPromise = null;
+  let scoreResizeTimer = null;
+  let scoreRenderedWidth = 0;
+  let currentGroup = 'main';
+  let songTrackManifest = [];
+  let decodedSongCache = new Map();
+  let pendingTrackLoads = new Map();
+  let currentSongKey = null;
+  let currentLoadToken = 0;
+  let activeFetchController = null;
+  let trackOffsets = [];
+  let trackCacheState = [];
+  let refDurationSec = 0;
+  let refActiveStartSec = 0;
+  let refActiveEndSec = 0;
+  let currentTrackIndex = -1;
+  let buffer = null;
+  let isPlaying = false;
+  let playback = null; // { entries: { source: AudioBufferSourceNode, gain: GainNode }[], masterStartedAt: number, lastResyncAt: number }
+  let playbackRate = 1;
+  const nativeAudio = document.createElement('audio');
+  let startedAt = 0;
+  let pausedAt = 0;
+  let loopCount = 0;
+  const minLoopLen = 0.05;
+  const switchFadeSec = 0.012;
+  let A = 0, S = 0, B = 0;
+  let lastAutoSyncAt = 0;
+  let syncRequestId = 0;
+
+  const el = {
+    currentSongTitle: document.getElementById('currentSongTitle'),
+    loadedBadge: document.getElementById('loadedBadge'),
+    cachedBadge: document.getElementById('cachedBadge'),
+    loopBadge: document.getElementById('loopBadge'),
+    statusBadge: document.getElementById('statusBadge'),
+    songSelect: document.getElementById('songSelect'),
+    groupSelect: document.getElementById('groupSelect'),
+    trackSelect: document.getElementById('trackSelect'),
+    play: document.getElementById('play'),
+    pause: document.getElementById('pause'),
+    stop: document.getElementById('stop'),
+    loopEnabled: document.getElementById('loopEnabled'),
+    speedSelect: document.getElementById('speedSelect'),
+    alignMode: document.getElementById('alignMode'),
+    nudge: document.getElementById('nudge'),
+    nudgeVal: document.getElementById('nudgeVal'),
+    syncNow: document.getElementById('syncNow'),
+    autoSync: document.getElementById('autoSync'),
+    nudgeReset: document.getElementById('nudgeReset'),
+    timeline: document.getElementById('timeline'),
+    wave: document.getElementById('wave'),
+    shadeLeft: document.getElementById('shadeLeft'),
+    loopRegion: document.getElementById('loopRegion'),
+    shadeRight: document.getElementById('shadeRight'),
+    playheadLine: document.getElementById('playheadLine'),
+    hA: document.getElementById('hA'),
+    hS: document.getElementById('hS'),
+    hB: document.getElementById('hB'),
+    aVal: document.getElementById('aVal'),
+    sVal: document.getElementById('sVal'),
+    bVal: document.getElementById('bVal'),
+    current: document.getElementById('current'),
+    duration: document.getElementById('duration'),
+    loopCount: document.getElementById('loopCount'),
+    status: document.getElementById('status'),
+    scorePanel: document.getElementById('scorePanel'),
+    scoreName: document.getElementById('scoreName'),
+    pageBadge: document.getElementById('pageBadge'),
+    scoreOpen: document.getElementById('scoreOpen'),
+    scoreViewer: document.getElementById('scoreViewer'),
+    scorePages: document.getElementById('scorePages'),
+  };
+
+  const fmt = (n) => Number.isFinite(n) ? n.toFixed(2) : '0.00';
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  nativeAudio.preload = 'auto';
+  nativeAudio.crossOrigin = 'anonymous';
+  nativeAudio.preservesPitch = true;
+  nativeAudio.mozPreservesPitch = true;
+  nativeAudio.webkitPreservesPitch = true;
+  new MutationObserver(() => updateBadges()).observe(el.status, { childList: true, characterData: true, subtree: true });
+  const songSlug = (name) => String(name || 'song')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase() || 'song';
+
+  function readLastSelection() {
+    try {
+      return JSON.parse(localStorage.getItem(LAST_SELECTION_KEY) || 'null') || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeLastSelection(trackIdx = currentTrackIndex) {
+    if (!currentSongEntry || !songTrackManifest.length) return;
+    const file = songTrackManifest[trackIdx] || songTrackManifest[0];
+    if (!file) return;
+    try {
+      localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify({
+        song: currentSongEntry.song,
+        group: currentGroup,
+        trackUrl: file.url,
+        trackName: file.name,
+        savedAt: Date.now(),
+      }));
+    } catch (err) {
+      console.warn('Could not persist last selection', err);
+    }
+  }
+  const cacheBustedUrl = (url, fingerprint) => {
+    if (!fingerprint) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}v=${encodeURIComponent(fingerprint)}`;
+  };
+
+  function browserSafeUrl(url) {
+    const [path, query] = url.split('?');
+    const encodedPath = path.split('/').map((part) => encodeURIComponent(part)).join('/');
+    return query ? `${encodedPath}?${query}` : encodedPath;
+  }
+
+  function setScoreMessage(message) {
+    el.scorePages.innerHTML = '';
+    el.pageBadge.textContent = 'Page —';
+    const div = document.createElement('div');
+    div.className = 'score-message';
+    div.textContent = message;
+    el.scorePages.appendChild(div);
+  }
+
+  function updatePageBadge() {
+    const pages = [...el.scorePages.querySelectorAll('.score-page')];
+    if (!pages.length) {
+      el.pageBadge.textContent = 'Page —';
+      return;
+    }
+    const viewerRect = el.scoreViewer.getBoundingClientRect();
+    const targetY = viewerRect.top + Math.min(viewerRect.height * 0.35, 180);
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    pages.forEach((page, idx) => {
+      const rect = page.getBoundingClientRect();
+      const dist = rect.top <= targetY && rect.bottom >= targetY
+        ? 0
+        : Math.min(Math.abs(rect.top - targetY), Math.abs(rect.bottom - targetY));
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = idx;
+      }
+    });
+    el.pageBadge.textContent = `Page ${bestIdx + 1}/${pages.length}`;
+  }
+
+  async function loadPdfJs() {
+    if (!pdfjsPromise) {
+      pdfjsPromise = import('./vendor/pdfjs/pdf.min.mjs').then((pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
+        return pdfjs;
+      });
+    }
+    return pdfjsPromise;
+  }
+
+  async function renderPdfPages(url, token) {
+    setScoreMessage('Loading score…');
+    try {
+      const pdfjs = await loadPdfJs();
+      if (token !== scoreRenderToken) return;
+
+      const pdf = await pdfjs.getDocument({ url }).promise;
+      if (token !== scoreRenderToken) return;
+
+      el.scorePages.innerHTML = '';
+      const availableWidth = Math.max(280, el.scoreViewer.clientWidth - 20);
+      scoreRenderedWidth = availableWidth;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+        if (token !== scoreRenderToken) return;
+        const page = await pdf.getPage(pageNo);
+        const viewport = page.getViewport({ scale: 1 });
+        const cssScale = availableWidth / viewport.width;
+        const renderScale = cssScale * dpr;
+        const renderViewport = page.getViewport({ scale: renderScale });
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'score-page';
+        canvas.width = Math.floor(renderViewport.width);
+        canvas.height = Math.floor(renderViewport.height);
+        canvas.style.width = `${Math.floor(viewport.width * cssScale)}px`;
+        canvas.style.height = `${Math.floor(viewport.height * cssScale)}px`;
+        el.scorePages.appendChild(canvas);
+
+        const ctx2d = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx2d, viewport: renderViewport }).promise;
+        if (token === scoreRenderToken) updatePageBadge();
+      }
+      if (token === scoreRenderToken) updatePageBadge();
+    } catch (err) {
+      console.warn('PDF.js score render failed', err);
+      if (token === scoreRenderToken) setScoreMessage('Could not render the score here. Use “Open PDF” above.');
+    }
+  }
+
+  function renderScore(entry) {
+    const score = entry?.score || null;
+    if (!score?.url) {
+      currentScoreUrl = '';
+      scoreRenderToken += 1;
+      el.scoreOpen.href = '#';
+      el.scoreName.textContent = '— no PDF found';
+      el.pageBadge.textContent = 'Page —';
+      el.scorePages.innerHTML = '';
+      el.scorePanel.classList.add('hidden');
+      return;
+    }
+
+    const url = browserSafeUrl(cacheBustedUrl(score.url, score.fingerprint));
+    if (url !== currentScoreUrl) {
+      currentScoreUrl = url;
+      scoreRenderedWidth = 0;
+      el.scoreViewer.scrollTop = 0;
+      renderPdfPages(url, ++scoreRenderToken);
+    }
+    el.scoreOpen.href = url;
+    const extra = entry.scoreCount > 1 ? ` · showing first of ${entry.scoreCount} PDFs` : '';
+    el.scoreName.textContent = `— ${score.name}${extra}`;
+    el.scorePanel.classList.remove('hidden');
+  }
+
+  async function loadWaveformsForSong(entry) {
+    const key = entry?.song || '';
+    if (waveformSongKey === key) return;
+    waveformSongKey = key;
+    waveformCache = {};
+    if (!entry) return;
+
+    const url = `./waveforms/${songSlug(entry.song)}.json`;
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        waveformCache = await res.json();
+        return;
+      }
+    } catch (err) {
+      console.warn('split waveform fetch failed', url, err);
+    }
+
+    // Compatibility fallback for older deployments that only have the aggregate file.
+    try {
+      if (!aggregateWaveformCache) {
+        const res = await fetch('./waveforms.json', { cache: 'no-store' });
+        aggregateWaveformCache = res.ok ? await res.json() : {};
+      }
+      const urls = new Set((entry.files || []).map((file) => file.url));
+      waveformCache = Object.fromEntries(Object.entries(aggregateWaveformCache).filter(([fileUrl]) => urls.has(fileUrl)));
+    } catch (err) {
+      console.warn('aggregate waveform fallback failed', err);
+      waveformCache = {};
+    }
+  }
+
+  function openCacheDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(CACHE_STORE)) {
+          db.createObjectStore(CACHE_STORE, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function cacheGet(key) {
+    const db = await openCacheDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readonly');
+      const store = tx.objectStore(CACHE_STORE);
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function cachePut(record) {
+    const db = await openCacheDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(CACHE_STORE);
+      const req = store.put(record);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function detectActiveRange(buf) {
+    const ch = buf.getChannelData(0);
+    const sr = buf.sampleRate;
+    const win = 2048;
+    const hop = 1024;
+    let maxAbs = 0;
+
+    for (let i = 0; i < ch.length; i += hop) {
+      let peak = 0;
+      const end = Math.min(ch.length, i + win);
+      for (let j = i; j < end; j++) {
+        const a = Math.abs(ch[j]);
+        if (a > peak) peak = a;
+      }
+      if (peak > maxAbs) maxAbs = peak;
+    }
+
+    const thr = Math.max(0.004, maxAbs * 0.08);
+    let first = 0;
+    let last = ch.length - 1;
+
+    for (let i = 0; i < ch.length; i += hop) {
+      let peak = 0;
+      const end = Math.min(ch.length, i + win);
+      for (let j = i; j < end; j++) {
+        const a = Math.abs(ch[j]);
+        if (a > peak) peak = a;
+      }
+      if (peak >= thr) { first = i; break; }
+    }
+
+    for (let i = ch.length - 1; i >= 0; i -= hop) {
+      let peak = 0;
+      const start = Math.max(0, i - win);
+      for (let j = start; j <= i; j++) {
+        const a = Math.abs(ch[j]);
+        if (a > peak) peak = a;
+      }
+      if (peak >= thr) { last = i; break; }
+    }
+
+    const pad = Math.floor(sr * 0.03);
+    return {
+      start: clamp((first - pad) / sr, 0, buf.duration),
+      end: clamp((last + pad) / sr, 0, buf.duration),
+    };
+  }
+
+  const dur = () => {
+    if (!buffer) return 0;
+    if (el.alignMode.checked && refDurationSec > 0) return refDurationSec;
+    return buffer.duration;
+  };
+
+  function shouldActiveRangeAlignTrack(trackIdx) {
+    const t = tracks[trackIdx];
+    if (!el.alignMode.checked || !t?.buffer || refDurationSec <= 0) return false;
+
+    // If files have effectively the same exported timeline, keep absolute time.
+    // Active-range detection can misread quiet entrances as leading silence and
+    // would otherwise introduce bogus offsets/stretching (e.g. Thank You stems).
+    const sameTimelineToleranceSec = 0.25;
+    return Math.abs(t.buffer.duration - refDurationSec) > sameTimelineToleranceSec;
+  }
+
+  function toTrackTime(masterSec, trackIdx) {
+    const t = tracks[trackIdx];
+    if (!t) return masterSec;
+    const d = t.buffer.duration;
+    let v = masterSec;
+
+    if (shouldActiveRangeAlignTrack(trackIdx)) {
+      const refSpan = Math.max(0.001, refActiveEndSec - refActiveStartSec);
+      const dstStart = t.activeStart ?? 0;
+      const dstEnd = t.activeEnd ?? d;
+      const dstSpan = Math.max(0.001, dstEnd - dstStart);
+      v = ((masterSec - refActiveStartSec) / refSpan) * dstSpan + dstStart;
+    }
+
+    v += (trackOffsets[trackIdx] || 0);
+    return clamp(v, 0, d);
+  }
+
+  function fromTrackTime(trackSec, trackIdx) {
+    const t = tracks[trackIdx];
+    if (!t) return trackSec;
+    const d = t.buffer.duration;
+    let v = trackSec - (trackOffsets[trackIdx] || 0);
+
+    if (shouldActiveRangeAlignTrack(trackIdx) && d > 0) {
+      const refSpan = Math.max(0.001, refActiveEndSec - refActiveStartSec);
+      const srcStart = t.activeStart ?? 0;
+      const srcEnd = t.activeEnd ?? d;
+      const srcSpan = Math.max(0.001, srcEnd - srcStart);
+      v = ((v - srcStart) / srcSpan) * refSpan + refActiveStartSec;
+    }
+
+    return clamp(v, 0, dur());
+  }
+  const xToSec = (x) => {
+    const r = el.timeline.getBoundingClientRect();
+    const p = clamp((x - r.left) / r.width, 0, 1);
+    return p * dur();
+  };
+  const secToPct = (s) => dur() ? clamp((s / dur()) * 100, 0, 100) : 0;
+
+  function enforce() {
+    const d = dur();
+    if (!d) return;
+    A = clamp(A, 0, d);
+    B = clamp(B, 0, d);
+    if (B - A < minLoopLen) B = clamp(A + minLoopLen, 0, d);
+    if (B <= A) A = clamp(B - minLoopLen, 0, d);
+    S = clamp(S, A, B);
+    pausedAt = clamp(pausedAt, 0, d);
+  }
+
+  function drawWaveform() {
+    const rect = el.timeline.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (el.wave.width !== w || el.wave.height !== h) {
+      el.wave.width = w;
+      el.wave.height = h;
+    }
+    const ctx2d = el.wave.getContext('2d');
+    ctx2d.clearRect(0, 0, w, h);
+    ctx2d.fillStyle = '#f7f7f7';
+    ctx2d.fillRect(0, 0, w, h);
+
+    const currentMeta = songTrackManifest[currentTrackIndex];
+    const cached = currentMeta ? waveformCache[currentMeta.url] : null;
+    const peaks = cached?.waveform || null;
+    const mid = h / 2;
+
+    ctx2d.strokeStyle = '#9aa3b2';
+    ctx2d.lineWidth = Math.max(1, dpr);
+    ctx2d.beginPath();
+
+    if (peaks && peaks.length) {
+      const len = peaks.length;
+      for (let i = 0; i < w; i++) {
+        const idx = Math.min(len - 1, Math.floor((i / Math.max(1, w - 1)) * len));
+        const amp = peaks[idx] || 0;
+        const y1 = mid - amp * mid;
+        const y2 = mid + amp * mid;
+        ctx2d.moveTo(i, y1);
+        ctx2d.lineTo(i, y2);
+      }
+      ctx2d.stroke();
+      return;
+    }
+
+    if (!buffer) return;
+    const data = buffer.getChannelData(0);
+    const step = Math.max(1, Math.floor(data.length / w));
+    for (let i = 0; i < w; i++) {
+      let min = 1.0;
+      let max = -1.0;
+      const start = i * step;
+      const end = Math.min(data.length, start + step);
+      for (let j = start; j < end; j++) {
+        const v = data[j];
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      const y1 = (1 + min) * mid;
+      const y2 = (1 + max) * mid;
+      ctx2d.moveTo(i, y1);
+      ctx2d.lineTo(i, y2);
+    }
+    ctx2d.stroke();
+  }
+
+  function render() {
+    const d = dur();
+    const pA = secToPct(A), pB = secToPct(B), pS = secToPct(S);
+    el.hA.style.left = `${pA}%`;
+    el.hB.style.left = `${pB}%`;
+    el.hS.style.left = `${pS}%`;
+
+    el.loopRegion.style.left = `${pA}%`;
+    el.loopRegion.style.width = `${Math.max(0, pB - pA)}%`;
+    el.shadeLeft.style.left = `0%`;
+    el.shadeLeft.style.width = `${Math.max(0, pA)}%`;
+    el.shadeRight.style.left = `${pB}%`;
+    el.shadeRight.style.width = `${Math.max(0, 100 - pB)}%`;
+    el.playheadLine.style.left = `${pS}%`;
+
+    el.aVal.textContent = fmt(A);
+    el.sVal.textContent = fmt(S);
+    el.bVal.textContent = fmt(B);
+    el.current.textContent = fmt(S);
+    el.duration.textContent = fmt(d);
+    updateBadges();
+  }
+
+  function currentPos() {
+    if (!isPlaying) return pausedAt;
+    if (playback?.mode === 'native') return fromTrackTime(nativeAudio.currentTime || 0, currentTrackIndex);
+    const masterPos = (ctx.currentTime - startedAt);
+    return clamp(masterPos, 0, dur());
+  }
+
+  function stopPlayback() {
+    if (playback?.mode === 'native') {
+      try { nativeAudio.pause(); } catch {}
+    } else if (playback?.entries) {
+      for (const e of playback.entries) {
+        if (!e) continue;
+        try { e.source.onended = null; e.source.stop(); } catch {}
+        try { e.source.disconnect(); } catch {}
+        try { e.gain.disconnect(); } catch {}
+      }
+    }
+    playback = null;
+  }
+
+  function setActiveTrack(nextIdx, fadeSec = switchFadeSec) {
+    if (!playback) {
+      currentTrackIndex = nextIdx;
+      return;
+    }
+    const now = ctx.currentTime;
+    playback.entries.forEach((e, idx) => {
+      if (!e) return;
+      const target = idx === nextIdx ? 1 : 0;
+      e.gain.gain.cancelScheduledValues(now);
+      e.gain.gain.setValueAtTime(e.gain.gain.value, now);
+      e.gain.gain.linearRampToValueAtTime(target, now + fadeSec);
+    });
+    currentTrackIndex = nextIdx;
+  }
+
+  function safeTrackOffset(sec, idx) {
+    const t = tracks[idx];
+    if (!t) return 0;
+    return clamp(sec, 0, Math.max(0, t.buffer.duration - 0.001));
+  }
+
+  function syncReferenceIndex() {
+    const preferred = songTrackManifest.findIndex((file) => /tutti|playback|reference|original|chor/i.test(file?.name || ''));
+    return preferred >= 0 ? preferred : 0;
+  }
+
+  function playFrom(offsetSec) {
+    if (!tracks[currentTrackIndex]?.buffer) return;
+    stopPlayback();
+
+    if (playbackRate !== 1) {
+      const file = songTrackManifest[currentTrackIndex];
+      if (!file) return;
+      const src = browserSafeUrl(cacheBustedUrl(file.url, file.fingerprint));
+      if (nativeAudio.src !== new URL(src, window.location.href).href) {
+        nativeAudio.src = src;
+      }
+      nativeAudio.preservesPitch = true;
+      nativeAudio.mozPreservesPitch = true;
+      nativeAudio.webkitPreservesPitch = true;
+      nativeAudio.playbackRate = playbackRate;
+      nativeAudio.currentTime = safeTrackOffset(toTrackTime(offsetSec, currentTrackIndex), currentTrackIndex);
+      playback = { mode: 'native' };
+      isPlaying = true;
+      lastAutoSyncAt = ctx.currentTime;
+      nativeAudio.play().catch((err) => {
+        console.warn('Native playback failed', err);
+        isPlaying = false;
+        playback = null;
+        el.status.textContent = 'playback failed';
+      });
+      el.status.textContent = `playing ${Math.round(playbackRate * 100)}%`;
+      return;
+    }
+
+    const when = ctx.currentTime + 0.02;
+    const entries = [];
+
+    tracks.forEach((t, idx) => {
+      if (!t?.buffer) return;
+      const src = ctx.createBufferSource();
+      src.buffer = t.buffer;
+      const g = ctx.createGain();
+      g.gain.value = idx === currentTrackIndex ? 1 : 0;
+      src.connect(g);
+      g.connect(ctx.destination);
+
+      const trackOffset = safeTrackOffset(toTrackTime(offsetSec, idx), idx);
+      src.start(when, trackOffset);
+
+      entries[idx] = { source: src, gain: g };
+    });
+
+    if (!entries[currentTrackIndex]) return;
+
+    startedAt = when - offsetSec;
+    playback = { entries, masterStartedAt: startedAt, lastResyncAt: ctx.currentTime };
+    lastAutoSyncAt = ctx.currentTime;
+    isPlaying = true;
+    el.status.textContent = 'playing';
+  }
+
+  const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  async function findBestLagSec(refBuf, refSec, trgBuf, trgSec, maxLagSec = 0.25, winSec = 1.2, requestId = syncRequestId) {
+    const ref = refBuf.getChannelData(0);
+    const trg = trgBuf.getChannelData(0);
+    const sr = Math.min(refBuf.sampleRate, trgBuf.sampleRate);
+    const decim = 4;
+    const n = Math.max(256, Math.floor((winSec * sr) / decim));
+    const maxLag = Math.max(1, Math.floor((maxLagSec * sr) / decim));
+
+    const refStart = Math.floor((refSec - winSec / 2) * refBuf.sampleRate);
+    const trgStartBase = Math.floor((trgSec - winSec / 2) * trgBuf.sampleRate);
+
+    let bestLag = 0;
+    let bestScore = -Infinity;
+
+    let checked = 0;
+    for (let lag = -maxLag; lag <= maxLag; lag++) {
+      if (requestId !== syncRequestId) return null;
+      let sumXY = 0;
+      let sumX2 = 0;
+      let sumY2 = 0;
+      for (let i = 0; i < n; i++) {
+        const rIdx = refStart + i * decim;
+        const tIdx = trgStartBase + (i + lag) * decim;
+        if (rIdx < 0 || rIdx >= ref.length || tIdx < 0 || tIdx >= trg.length) continue;
+        const x = ref[rIdx];
+        const y = trg[tIdx];
+        sumXY += x * y;
+        sumX2 += x * x;
+        sumY2 += y * y;
+      }
+      const denom = Math.sqrt(sumX2 * sumY2) + 1e-9;
+      const score = sumXY / denom;
+      if (score > bestScore) {
+        bestScore = score;
+        bestLag = lag;
+      }
+      checked += 1;
+      if (checked % 24 === 0) await yieldToBrowser();
+    }
+
+    return { lagSec: (bestLag * decim) / sr, score: bestScore };
+  }
+
+  async function autoSyncCurrentTrack({ restart = true, silent = false } = {}) {
+    if (!tracks.length || currentTrackIndex < 0) return false;
+    const requestId = ++syncRequestId;
+    const refIdx = syncReferenceIndex();
+    const idx = currentTrackIndex;
+    if (idx === refIdx) return false;
+    if (!tracks[idx]?.buffer) return false;
+    if (!tracks[refIdx]?.buffer) {
+      try {
+        await ensureTrackDecoded(refIdx);
+      } catch (err) {
+        console.warn('Failed to decode sync reference track', songTrackManifest[refIdx]?.url, err);
+        if (!silent) el.status.textContent = 'sync reference unavailable';
+        return false;
+      }
+    }
+    if (requestId !== syncRequestId || idx !== currentTrackIndex || !tracks[refIdx]?.buffer) return false;
+    const masterPos = currentPos();
+    const refSec = toTrackTime(masterPos, refIdx);
+    const trgSec = toTrackTime(masterPos, idx);
+    if (!silent) el.status.textContent = 'syncing...';
+    const out = await findBestLagSec(tracks[refIdx].buffer, refSec, tracks[idx].buffer, trgSec, 0.25, 1.2, requestId);
+
+    if (requestId !== syncRequestId || idx !== currentTrackIndex || !out) return false;
+    if (!Number.isFinite(out.lagSec)) {
+      if (!silent) el.status.textContent = 'sync unavailable';
+      return false;
+    }
+    if (Math.abs(out.lagSec) < 0.003) {
+      if (!silent) el.status.textContent = 'already synced';
+      return false;
+    }
+
+    trackOffsets[idx] += out.lagSec;
+    updateNudgeUI();
+
+    if (isPlaying && restart) playFrom(currentPos());
+    enforce();
+    render();
+    if (!silent) el.status.textContent = `synced ${Math.round(out.lagSec * 1000)} ms (q=${out.score.toFixed(2)})`;
+    return true;
+  }
+
+  function resyncInactiveTracks() {
+    if (!isPlaying || !playback || playback.mode === 'native') return;
+    const now = ctx.currentTime;
+    if (now - playback.lastResyncAt < 2.5) return;
+
+    const when = now + 0.02;
+    const masterPos = clamp(now - startedAt, 0, dur());
+
+    playback.entries.forEach((entry, idx) => {
+      if (!entry || !tracks[idx]?.buffer) return;
+      if (idx === currentTrackIndex) return;
+
+      const newSrc = ctx.createBufferSource();
+      newSrc.buffer = tracks[idx].buffer;
+      newSrc.connect(entry.gain);
+      const off = safeTrackOffset(toTrackTime(masterPos, idx), idx);
+      try { newSrc.start(when, off); } catch { return; }
+
+      const oldSrc = entry.source;
+      entry.source = newSrc;
+      try { oldSrc.stop(when + 0.04); } catch {}
+      try { oldSrc.disconnect(); } catch {}
+    });
+
+    playback.lastResyncAt = now;
+  }
+
+  function updateNudgeUI() {
+    const ms = currentTrackIndex >= 0 ? Math.round((trackOffsets[currentTrackIndex] || 0) * 1000) : 0;
+    el.nudge.value = String(ms);
+    el.nudgeVal.textContent = `${ms} ms`;
+  }
+
+  function cacheKeyForFile(file) {
+    return `${file.url}::${file.fingerprint || 'no-fingerprint'}`;
+  }
+
+  const loadedTrackCount = () => tracks.filter(t => t?.buffer).length;
+  const cachedTrackCount = () => trackCacheState.filter(Boolean).length;
+
+  function updateBadges() {
+    const total = songTrackManifest.length || 0;
+    const compact = window.matchMedia?.('(max-width: 720px)').matches;
+    el.loadedBadge.textContent = compact ? `L ${loadedTrackCount()}/${total}` : `${loadedTrackCount()}/${total} loaded`;
+    el.cachedBadge.textContent = compact ? `C ${cachedTrackCount()}/${total}` : `${cachedTrackCount()}/${total} cached`;
+    el.loopBadge.textContent = el.loopEnabled.checked ? 'Loop on' : 'Loop off';
+    el.loopBadge.classList.toggle('accent', el.loopEnabled.checked);
+    el.statusBadge.textContent = el.status.textContent || 'idle';
+  }
+
+  function trackOptionLabel(t, idx) {
+    const suffixes = [];
+    if (tracks[idx]?.buffer) suffixes.push('loaded');
+    else if (trackCacheState[idx]) suffixes.push('cached');
+    return suffixes.length ? `${t.name} (${suffixes.join(', ')})` : t.name;
+  }
+
+  function updateTrackCacheDisplay() {
+    [...el.trackSelect.options].forEach((opt) => {
+      const idx = Number(opt.value);
+      const t = songTrackManifest[idx];
+      if (Number.isInteger(idx) && t) opt.textContent = trackOptionLabel(t, idx);
+    });
+    updateBadges();
+  }
+
+  function inferTrackSection(name) {
+    const n = String(name || '').toLowerCase();
+    if (/tutti|playback|original|aufnahme|demo|reference|chor/.test(n)) return 'Tutti / Reference';
+    if (/sopran|soprano|\bs[0-9]?\b|[_-]s[0-9]?[_-]/.test(n)) return 'Soprano';
+    if (/alt|alto|mezzo|\ba[0-9]?\b|[_-]a[0-9]?[_-]/.test(n)) return 'Alto / Mezzo';
+    if (/tenor|\bt[0-9]?\b|[_-]t[0-9]?[_-]/.test(n)) return 'Tenor';
+    if (/bass|bariton|\bb[0-9]?\b|[_-]b[0-9]?[_-]/.test(n)) return 'Bass';
+    return 'Other';
+  }
+
+  function populateSongSelect() {
+    el.songSelect.innerHTML = '';
+    repertoire.forEach((entry, idx) => {
+      const opt = document.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = entry.song;
+      el.songSelect.appendChild(opt);
+    });
+    el.songSelect.disabled = repertoire.length === 0;
+  }
+
+  function populateGroupSelect() {
+    const groups = [...new Set((currentSongEntry?.files || []).map((f) => f.group || 'main'))];
+    el.groupSelect.innerHTML = '';
+    groups.forEach((group) => {
+      const opt = document.createElement('option');
+      opt.value = group;
+      opt.textContent = group;
+      el.groupSelect.appendChild(opt);
+    });
+    el.groupSelect.disabled = groups.length === 0;
+    if (groups.includes(currentGroup)) {
+      el.groupSelect.value = currentGroup;
+    } else if (groups.length > 0) {
+      currentGroup = groups[0];
+      el.groupSelect.value = currentGroup;
+    }
+  }
+
+  function populateTrackSelect() {
+    el.trackSelect.innerHTML = '';
+    const sectionOrder = ['Tutti / Reference', 'Soprano', 'Alto / Mezzo', 'Tenor', 'Bass', 'Other'];
+    const sections = new Map(sectionOrder.map((section) => [section, []]));
+    songTrackManifest.forEach((t, idx) => {
+      const section = inferTrackSection(t.name);
+      if (!sections.has(section)) sections.set(section, []);
+      sections.get(section).push([t, idx]);
+    });
+
+    sections.forEach((items, section) => {
+      if (!items.length) return;
+      const group = document.createElement('optgroup');
+      group.label = section;
+      items.forEach(([t, idx]) => {
+      const opt = document.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = trackOptionLabel(t, idx);
+        group.appendChild(opt);
+      });
+      el.trackSelect.appendChild(group);
+    });
+    el.trackSelect.disabled = songTrackManifest.length === 0;
+    if (currentTrackIndex >= 0) el.trackSelect.value = String(currentTrackIndex);
+    updateNudgeUI();
+  }
+
+  function applyBuffer(newBuffer, preserveState = true, prevMasterPos = null) {
+    const wasPlaying = isPlaying;
+    const prevPos = preserveState
+      ? clamp((prevMasterPos ?? currentPos()), 0, dur() || newBuffer.duration)
+      : 0;
+
+    stopPlayback();
+    isPlaying = false;
+    buffer = newBuffer;
+
+    const d = dur();
+    if (!preserveState) {
+      A = 0;
+      B = d;
+      S = 0;
+      pausedAt = 0;
+      loopCount = 0;
+      el.loopCount.textContent = '0';
+    } else {
+      A = clamp(A, 0, d);
+      B = clamp(B, 0, d);
+      if (B - A < minLoopLen) B = Math.min(d, A + minLoopLen);
+      S = clamp(prevPos, A, B);
+      pausedAt = S;
+    }
+
+    enforce();
+    render();
+    drawWaveform();
+
+    if (wasPlaying) playFrom(pausedAt);
+    el.status.textContent = 'loaded';
+  }
+
+  function safariFriendlyFiles(files) {
+    return files.filter((file) => /\.(mp3|m4a)$/i.test(file.name));
+  }
+
+  function abortActiveFetch() {
+    if (!activeFetchController) return;
+    try { activeFetchController.abort(); } catch {}
+    activeFetchController = null;
+  }
+
+  function manifestFingerprint() {
+    return JSON.stringify(songTrackManifest.map(f => [f.url, f.fingerprint]));
+  }
+
+  async function inspectCachedTracks(loadToken = currentLoadToken) {
+    const states = await Promise.all(songTrackManifest.map(async (file) => {
+      try {
+        const cached = await cacheGet(cacheKeyForFile(file));
+        return Boolean(cached?.arrayBuffer);
+      } catch (err) {
+        console.warn('cache inspection failed', file.url, err);
+        return false;
+      }
+    }));
+    if (loadToken !== currentLoadToken) return;
+    trackCacheState = states;
+    updateTrackCacheDisplay();
+    if (states.some(Boolean)) {
+      el.status.textContent = `cached ${cachedTrackCount()}/${songTrackManifest.length} tracks locally`;
+    }
+  }
+
+  function rememberDecodedSong() {
+    if (!currentSongKey) return;
+    decodedSongCache.set(`${currentSongKey}::${currentGroup}`, {
+      manifestFingerprint: manifestFingerprint(),
+      tracks: tracks.slice(),
+    });
+  }
+
+  async function ensureTrackDecoded(idx, loadToken = currentLoadToken) {
+    if (!songTrackManifest[idx]) return null;
+    if (tracks[idx]?.buffer) return tracks[idx];
+
+    const pendingKey = `${currentSongKey || 'song'}::${currentGroup}::${idx}`;
+    if (pendingTrackLoads.has(pendingKey)) return pendingTrackLoads.get(pendingKey);
+
+    const loadPromise = (async () => {
+      if (loadToken !== currentLoadToken) throw new DOMException('Stale track load', 'AbortError');
+
+      const file = songTrackManifest[idx];
+      const cacheKey = cacheKeyForFile(file);
+      let arr;
+      let loadedFromPersistentCache = false;
+
+      try {
+        const cached = await cacheGet(cacheKey);
+        if (cached?.arrayBuffer) {
+          arr = cached.arrayBuffer;
+          loadedFromPersistentCache = true;
+          trackCacheState[idx] = true;
+          updateTrackCacheDisplay();
+        }
+      } catch (err) {
+        console.warn('cache read failed', err);
+      }
+
+      if (loadToken !== currentLoadToken) throw new DOMException('Stale track load', 'AbortError');
+
+      if (!arr) {
+        abortActiveFetch();
+        activeFetchController = new AbortController();
+        const res = await fetch(cacheBustedUrl(file.url, file.fingerprint), { signal: activeFetchController.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        arr = await res.arrayBuffer();
+        try {
+          await cachePut({
+            key: cacheKey,
+            url: file.url,
+            fingerprint: file.fingerprint || null,
+            arrayBuffer: arr,
+            cachedAt: Date.now(),
+          });
+          trackCacheState[idx] = true;
+          updateTrackCacheDisplay();
+        } catch (err) {
+          console.warn('cache write failed', err);
+        }
+      }
+
+      if (loadToken !== currentLoadToken) throw new DOMException('Stale track load', 'AbortError');
+
+      const decoded = await ctx.decodeAudioData(arr.slice(0));
+      const meta = waveformCache[file.url] || null;
+      const active = (meta?.fingerprint === (file.fingerprint || null) && Number.isFinite(meta.activeStart) && Number.isFinite(meta.activeEnd))
+        ? { start: meta.activeStart, end: meta.activeEnd }
+        : detectActiveRange(decoded);
+      const track = {
+        name: file.name,
+        url: file.url,
+        fingerprint: file.fingerprint || null,
+        buffer: decoded,
+        activeStart: active.start,
+        activeEnd: active.end,
+      };
+      if (loadToken !== currentLoadToken) throw new DOMException('Stale track load', 'AbortError');
+      tracks[idx] = track;
+      track.fromPersistentCache = loadedFromPersistentCache;
+      updateTrackCacheDisplay();
+      return track;
+    })().finally(() => pendingTrackLoads.delete(pendingKey));
+
+    pendingTrackLoads.set(pendingKey, loadPromise);
+    return loadPromise;
+  }
+
+  async function warmDecodeSongTracks(startIdx = 1) {
+    const songKeyAtStart = currentSongKey;
+    for (let i = startIdx; i < songTrackManifest.length; i++) {
+      if (tracks[i]?.buffer) continue;
+      try {
+        await ensureTrackDecoded(i);
+        if (songKeyAtStart === currentSongKey) {
+          el.status.textContent = `loaded ${i + 1}/${songTrackManifest.length} tracks`;
+        }
+      } catch (err) {
+        console.warn('Skipping undecodable file', songTrackManifest[i]?.url, err);
+      }
+    }
+    if (songKeyAtStart && songKeyAtStart === currentSongKey) {
+      decodedSongCache.set(`${songKeyAtStart}::${currentGroup}`, {
+        manifestFingerprint: JSON.stringify(songTrackManifest.map(f => [f.url, f.fingerprint])),
+        tracks: tracks.slice(),
+      });
+      if (songTrackManifest.length > 0) {
+        el.status.textContent = `ready (${tracks.filter(t => t?.buffer).length}/${songTrackManifest.length} tracks)`;
+      }
+    }
+  }
+
+  async function warmDecodeCachedTracks(startIdx = 1) {
+    const songKeyAtStart = currentSongKey;
+    const groupAtStart = currentGroup;
+    for (let i = startIdx; i < songTrackManifest.length; i++) {
+      if (songKeyAtStart !== currentSongKey || groupAtStart !== currentGroup) return;
+      if (tracks[i]?.buffer || !trackCacheState[i]) continue;
+      try {
+        await ensureTrackDecoded(i);
+        if (songKeyAtStart === currentSongKey && groupAtStart === currentGroup) {
+          el.status.textContent = `loaded cached tracks ${loadedTrackCount()}/${songTrackManifest.length} (${cachedTrackCount()}/${songTrackManifest.length} cached)`;
+        }
+      } catch (err) {
+        console.warn('Skipping cached but undecodable file', songTrackManifest[i]?.url, err);
+      }
+    }
+    if (songKeyAtStart && songKeyAtStart === currentSongKey && groupAtStart === currentGroup) {
+      rememberDecodedSong();
+      if (cachedTrackCount() > loadedTrackCount()) {
+        el.status.textContent = `ready (${loadedTrackCount()}/${songTrackManifest.length} decoded, ${cachedTrackCount()}/${songTrackManifest.length} cached)`;
+      }
+    }
+  }
+
+  async function activatePreferredTrack(preferredTrackIndex, loadToken) {
+    if (!Number.isInteger(preferredTrackIndex) || preferredTrackIndex <= 0 || preferredTrackIndex >= songTrackManifest.length) {
+      writeLastSelection(0);
+      return;
+    }
+    try {
+      await ensureTrackDecoded(preferredTrackIndex, loadToken);
+      if (loadToken !== currentLoadToken) return;
+      switchTrack(preferredTrackIndex, { preservePos: false });
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      console.warn('Failed to restore last selected track', songTrackManifest[preferredTrackIndex]?.url, err);
+      writeLastSelection(0);
+    }
+  }
+
+  async function loadSongByIndex(songIdx, options = {}) {
+    const entry = repertoire[songIdx];
+    if (!entry) return;
+
+    currentLoadToken += 1;
+    const loadToken = currentLoadToken;
+    abortActiveFetch();
+    pendingTrackLoads.clear();
+
+    const songKey = entry.song;
+    currentSongEntry = entry;
+    currentSongKey = songKey;
+    el.currentSongTitle.textContent = entry.song;
+    renderScore(entry);
+    el.status.textContent = `loading ${entry.song}...`;
+    stopPlayback();
+    isPlaying = false;
+    populateGroupSelect();
+    songTrackManifest = safariFriendlyFiles(entry.files).filter((f) => (f.group || 'main') === currentGroup);
+    const preferredTrackIndex = songTrackManifest.findIndex((f) => (
+      (options.preferredTrackUrl && f.url === options.preferredTrackUrl)
+      || (options.preferredTrackName && f.name === options.preferredTrackName)
+    ));
+    await loadWaveformsForSong(entry);
+    trackOffsets = songTrackManifest.map(() => 0);
+    trackCacheState = songTrackManifest.map(() => false);
+    refDurationSec = 0;
+    currentTrackIndex = -1;
+    buffer = null;
+
+    if (songTrackManifest.length === 0) {
+      tracks = [];
+      el.trackSelect.innerHTML = '';
+      el.trackSelect.disabled = true;
+      render();
+      el.status.textContent = 'no mp3/m4a files';
+      return;
+    }
+
+    const cacheKeyForSongGroup = `${songKey}::${currentGroup}`;
+    const cachedSong = decodedSongCache.get(cacheKeyForSongGroup);
+    if (cachedSong && cachedSong.manifestFingerprint === manifestFingerprint()) {
+      tracks = cachedSong.tracks.slice();
+      trackCacheState = songTrackManifest.map((_, idx) => Boolean(tracks[idx]?.buffer) || Boolean(trackCacheState[idx]));
+      currentTrackIndex = 0;
+      populateTrackSelect();
+      el.trackSelect.value = '0';
+      const first = tracks[0];
+      refDurationSec = first?.buffer?.duration || 0;
+      refActiveStartSec = first?.activeStart || 0;
+      refActiveEndSec = first?.activeEnd || refDurationSec;
+      buffer = first?.buffer || null;
+      A = 0;
+      B = dur();
+      S = 0;
+      pausedAt = 0;
+      loopCount = 0;
+      el.loopCount.textContent = '0';
+      enforce();
+      render();
+      if (buffer) drawWaveform();
+      el.status.textContent = `${entry.song} loaded from memory (${tracks.filter(t => t?.buffer).length}/${songTrackManifest.length} tracks)`;
+      await activatePreferredTrack(preferredTrackIndex, loadToken);
+      return;
+    }
+
+    tracks = [];
+    currentTrackIndex = 0;
+    populateTrackSelect();
+    await inspectCachedTracks(loadToken);
+    if (loadToken !== currentLoadToken) return;
+    el.trackSelect.value = '0';
+    A = 0;
+    B = 0;
+    S = 0;
+    pausedAt = 0;
+    loopCount = 0;
+    el.loopCount.textContent = '0';
+    render();
+    el.status.textContent = `loading first track of ${entry.song}...`;
+
+    try {
+      const first = await ensureTrackDecoded(0, loadToken);
+      if (loadToken !== currentLoadToken) return;
+      const firstMeta = songTrackManifest[0] ? waveformCache[songTrackManifest[0].url] : null;
+      refDurationSec = firstMeta?.duration || first?.buffer.duration || 0;
+      refActiveStartSec = firstMeta?.activeStart || first?.activeStart || 0;
+      refActiveEndSec = firstMeta?.activeEnd || first?.activeEnd || refDurationSec;
+      buffer = first?.buffer || null;
+      B = dur();
+      enforce();
+      render();
+      drawWaveform();
+      rememberDecodedSong();
+      const cached = cachedTrackCount();
+      const loaded = loadedTrackCount();
+      const cacheNote = cached > loaded ? `; ${cached}/${songTrackManifest.length} cached locally` : '';
+      el.status.textContent = `${entry.song} loaded (${loaded}/${songTrackManifest.length} decoded${cacheNote}; others load on demand)`;
+      await activatePreferredTrack(preferredTrackIndex, loadToken);
+      if (cached > loaded) setTimeout(() => warmDecodeCachedTracks(1), 0);
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      console.warn('Failed to decode first track', songTrackManifest[0]?.url, err);
+      render();
+      el.status.textContent = 'failed to decode first track';
+    }
+  }
+
+  function switchTrack(next, { preservePos = true } = {}) {
+    if (!Number.isInteger(next) || next < 0 || next >= songTrackManifest.length) return;
+    if (!tracks[next]?.buffer) return;
+    if (next === currentTrackIndex && buffer === tracks[next]?.buffer) return;
+
+    const prevMasterPos = preservePos ? currentPos() : 0;
+    const wasPlaying = isPlaying;
+    if (wasPlaying) {
+      stopPlayback();
+      isPlaying = false;
+    }
+
+    currentTrackIndex = next;
+    buffer = tracks[next].buffer;
+    pausedAt = clamp(prevMasterPos, 0, dur() || prevMasterPos || 0);
+    S = clamp(pausedAt, A, B || dur() || pausedAt || 0);
+    enforce();
+    render();
+    if (buffer) {
+      drawWaveform();
+    }
+
+    if (wasPlaying) {
+      playFrom(pausedAt);
+      if (el.autoSync.checked && next !== syncReferenceIndex()) {
+        setTimeout(() => autoSyncCurrentTrack({ restart: true, silent: true }), 180);
+      }
+    }
+
+    el.trackSelect.value = String(next);
+    updateNudgeUI();
+    writeLastSelection(next);
+    el.status.textContent = `switched (${loadedTrackCount()}/${songTrackManifest.length} decoded, ${cachedTrackCount()}/${songTrackManifest.length} cached)`;
+  }
+
+  async function loadRepertoire() {
+    const repRes = await fetch('./repertoire.json', { cache: 'no-store' });
+    if (!repRes.ok) throw new Error('Failed to fetch repertoire.json');
+    repertoire = await repRes.json();
+    populateSongSelect();
+    if (repertoire.length > 0) {
+      const saved = readLastSelection();
+      const savedSongIdx = saved?.song ? repertoire.findIndex((entry) => entry.song === saved.song) : -1;
+      const songIdx = savedSongIdx >= 0 ? savedSongIdx : 0;
+      if (saved?.group) currentGroup = saved.group;
+      el.songSelect.value = String(songIdx);
+      await loadSongByIndex(songIdx, {
+        preferredTrackUrl: saved?.trackUrl,
+        preferredTrackName: saved?.trackName,
+      });
+    } else {
+      el.status.textContent = 'no songs found';
+    }
+  }
+
+  el.trackSelect.addEventListener('change', async () => {
+    const next = Number(el.trackSelect.value);
+    if (!Number.isInteger(next) || next < 0 || next >= songTrackManifest.length) return;
+    if (!tracks[next]?.buffer) {
+      const prev = el.status.textContent;
+      el.status.textContent = `loading track ${next + 1}/${songTrackManifest.length}...`;
+      const loadToken = currentLoadToken;
+      try {
+        const track = await ensureTrackDecoded(next, loadToken);
+        if (loadToken !== currentLoadToken) return;
+        if (track && currentTrackIndex === 0 && refDurationSec === 0) {
+          refDurationSec = track.buffer.duration || 0;
+          refActiveStartSec = track.activeStart || 0;
+          refActiveEndSec = track.activeEnd || refDurationSec;
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        console.warn('Failed to decode selected track', songTrackManifest[next]?.url, err);
+        el.status.textContent = 'failed to decode selected track';
+        return;
+      }
+      rememberDecodedSong();
+      if (prev) el.status.textContent = `${prev} · now ${loadedTrackCount()}/${songTrackManifest.length} decoded, ${cachedTrackCount()}/${songTrackManifest.length} cached`;
+    }
+    switchTrack(next);
+  });
+
+  el.alignMode.addEventListener('change', () => {
+    enforce();
+    render();
+  });
+
+  el.loopEnabled.addEventListener('change', updateBadges);
+  el.scoreViewer.addEventListener('scroll', updatePageBadge, { passive: true });
+
+  el.speedSelect.addEventListener('change', () => {
+    const nextRate = Number(el.speedSelect.value) || 1;
+    if (nextRate === playbackRate) return;
+    const pos = currentPos();
+    playbackRate = nextRate;
+    if (nativeAudio) {
+      nativeAudio.preservesPitch = true;
+      nativeAudio.mozPreservesPitch = true;
+      nativeAudio.webkitPreservesPitch = true;
+      nativeAudio.playbackRate = playbackRate;
+    }
+    if (isPlaying) playFrom(pos);
+    el.status.textContent = playbackRate === 1
+      ? 'tempo 100%'
+      : `tempo ${Math.round(playbackRate * 100)}%`;
+  });
+
+  el.nudge.addEventListener('input', () => {
+    if (currentTrackIndex < 0) return;
+    const ms = Number(el.nudge.value) || 0;
+    trackOffsets[currentTrackIndex] = ms / 1000;
+    el.nudgeVal.textContent = `${ms} ms`;
+    if (isPlaying) playFrom(currentPos());
+    enforce();
+    render();
+  });
+
+  el.syncNow.addEventListener('click', () => {
+    autoSyncCurrentTrack();
+  });
+
+  el.nudgeReset.addEventListener('click', () => {
+    if (currentTrackIndex < 0) return;
+    trackOffsets[currentTrackIndex] = 0;
+    updateNudgeUI();
+    if (isPlaying) playFrom(currentPos());
+    enforce();
+    render();
+  });
+
+  el.songSelect.addEventListener('change', async () => {
+    const idx = Number(el.songSelect.value);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= repertoire.length) return;
+    try {
+      await ctx.resume();
+      await loadSongByIndex(idx);
+    } catch (err) {
+      console.error(err);
+      el.status.textContent = 'song load error';
+    }
+  });
+
+  el.groupSelect.addEventListener('change', async () => {
+    if (!currentSongEntry) return;
+    currentGroup = el.groupSelect.value || 'main';
+    const idx = repertoire.findIndex((item) => item.song === currentSongEntry.song);
+    if (idx < 0) return;
+    try {
+      await ctx.resume();
+      await loadSongByIndex(idx);
+    } catch (err) {
+      console.error(err);
+      el.status.textContent = 'group load error';
+    }
+  });
+
+  el.play.addEventListener('click', async () => {
+    if (!buffer) return;
+    await ctx.resume();
+    enforce();
+    playFrom(clamp(pausedAt, 0, dur()));
+  });
+
+  el.pause.addEventListener('click', () => {
+    if (!isPlaying) return;
+    pausedAt = currentPos();
+    S = pausedAt;
+    isPlaying = false;
+    stopPlayback();
+    enforce(); render();
+    el.status.textContent = 'paused';
+  });
+
+  el.stop.addEventListener('click', () => {
+    isPlaying = false;
+    pausedAt = A;
+    S = A;
+    stopPlayback();
+    enforce(); render();
+    el.status.textContent = 'stopped';
+  });
+
+  function seekTo(nextSec) {
+    if (!buffer) return;
+    const target = clamp(nextSec, 0, dur());
+    S = target;
+    pausedAt = target;
+    enforce();
+    render();
+    if (isPlaying) {
+      playFrom(target);
+    }
+  }
+
+  window.addEventListener('keydown', async (e) => {
+    const tag = e.target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
+    if (!buffer) return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (isPlaying) {
+        pausedAt = currentPos();
+        S = pausedAt;
+        isPlaying = false;
+        stopPlayback();
+        enforce();
+        render();
+        el.status.textContent = 'paused';
+      } else {
+        await ctx.resume();
+        enforce();
+        playFrom(clamp(pausedAt, 0, dur()));
+      }
+      return;
+    }
+
+    if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      seekTo(currentPos() - 5);
+      return;
+    }
+
+    if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      seekTo(currentPos() + 5);
+      return;
+    }
+
+    if (e.code === 'Digit1') {
+      e.preventDefault();
+      A = clamp(currentPos(), 0, Math.max(0, B - minLoopLen));
+      if (S < A) S = A;
+      pausedAt = clamp(pausedAt, A, dur());
+      enforce();
+      render();
+      el.status.textContent = 'loop start set';
+      return;
+    }
+
+    if (e.code === 'Digit2') {
+      e.preventDefault();
+      B = clamp(currentPos(), Math.min(dur(), A + minLoopLen), dur());
+      if (S > B) S = B;
+      pausedAt = clamp(pausedAt, 0, B);
+      enforce();
+      render();
+      el.status.textContent = 'loop end set';
+    }
+  });
+
+  // Dragging single-bar handles
+  let drag = null;
+  function setFromClientX(clientX) {
+    if (!buffer || !drag) return;
+    const v = xToSec(clientX);
+    if (drag === 'A') {
+      A = Math.min(v, B - minLoopLen);
+      if (S < A) S = A;
+    } else if (drag === 'B') {
+      B = Math.max(v, A + minLoopLen);
+      if (S > B) S = B;
+    } else if (drag === 'S') {
+      S = clamp(v, A, B);
+      pausedAt = S;
+      if (isPlaying) playFrom(S);
+    }
+    enforce(); render();
+  }
+
+  function beginDrag(which, ev) {
+    drag = which;
+    const node = which === 'A' ? el.hA : which === 'B' ? el.hB : el.hS;
+    node.classList.add('dragging');
+    setFromClientX(ev.clientX ?? ev.touches?.[0]?.clientX ?? 0);
+  }
+
+  function moveDrag(ev) {
+    if (!drag) return;
+    const x = ev.clientX ?? ev.touches?.[0]?.clientX;
+    if (typeof x !== 'number') return;
+    setFromClientX(x);
+    ev.preventDefault();
+  }
+
+  function endDrag() {
+    if (!drag) return;
+    el.hA.classList.remove('dragging');
+    el.hB.classList.remove('dragging');
+    el.hS.classList.remove('dragging');
+    drag = null;
+  }
+
+  [['A', el.hA], ['S', el.hS], ['B', el.hB]].forEach(([k, node]) => {
+    node.addEventListener('pointerdown', (e) => { node.setPointerCapture(e.pointerId); beginDrag(k, e); });
+    node.addEventListener('touchstart', (e) => beginDrag(k, e), { passive: false });
+  });
+
+  el.timeline.addEventListener('pointermove', moveDrag);
+  el.timeline.addEventListener('touchmove', moveDrag, { passive: false });
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('touchend', endDrag);
+  function rerenderScoreAfterViewportWidthChange() {
+    if (!currentScoreUrl) return;
+    const nextWidth = Math.max(280, el.scoreViewer.clientWidth - 20);
+    if (Math.abs(nextWidth - scoreRenderedWidth) < 12) return;
+    clearTimeout(scoreResizeTimer);
+    scoreResizeTimer = setTimeout(() => {
+      const settledWidth = Math.max(280, el.scoreViewer.clientWidth - 20);
+      if (Math.abs(settledWidth - scoreRenderedWidth) >= 12) {
+        renderPdfPages(currentScoreUrl, ++scoreRenderToken);
+      }
+    }, 220);
+  }
+
+  let lastViewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  window.addEventListener('resize', () => {
+    if (buffer) drawWaveform();
+    const nextViewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    if (Math.abs(nextViewportWidth - lastViewportWidth) < 12) return;
+    lastViewportWidth = nextViewportWidth;
+    rerenderScoreAfterViewportWidthChange();
+  });
+
+  // Tap timeline: move nearest handle
+  el.timeline.addEventListener('pointerdown', (e) => {
+    if (!buffer) return;
+    if (e.target.classList.contains('handle')) return;
+    const v = xToSec(e.clientX);
+    const dA = Math.abs(v - A), dS = Math.abs(v - S), dB = Math.abs(v - B);
+    const pick = dA <= dS && dA <= dB ? 'A' : (dB <= dA && dB <= dS ? 'B' : 'S');
+    beginDrag(pick, e);
+  });
+
+  setInterval(() => {
+    if (!buffer) return;
+    resyncInactiveTracks();
+
+    let t = currentPos();
+
+    if (isPlaying && el.loopEnabled.checked && t >= B) {
+      loopCount += 1;
+      el.loopCount.textContent = String(loopCount);
+      pausedAt = A;
+      S = A;
+      playFrom(A);
+      t = A;
+    }
+
+    if (isPlaying) {
+      S = clamp(t, 0, dur());
+      pausedAt = S;
+    }
+
+    enforce();
+    render();
+  }, 20);
+
+  loadRepertoire().catch((err) => {
+    console.error(err);
+    el.status.textContent = 'repertoire load error';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+[Unit]
+Description=Choir app static web server (prod)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/paul/.openclaw/workspace/choir-app
+ExecStart=/usr/bin/python3 /home/paul/.openclaw/workspace/choir-app/serve_static.py --port 5174 --host 0.0.0.0 --directory /home/paul/.openclaw/workspace/choir-app/instances/prod/web
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

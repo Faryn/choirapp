@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+tmp/
+
+# Copyrighted/local repertoire files and generated metadata derived from them.
+data/
+spike/public/assets/
+spike/public/repertoire.json
+web/repertoire.json
+web/waveforms.json
+web/waveforms/
+instances/*/web/repertoire.json
+instances/*/web/waveforms.json
+instances/*/web/waveforms/

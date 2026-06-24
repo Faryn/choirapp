@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>choir app • Page Coder</title>
+  <style>
+    :root {
+      --bg: #f7f5f0;
+      --panel: #fffefa;
+      --border: #ddd5c9;
+      --text: #201c18;
+      --muted: #6f675e;
+      --accent: #245e52;
+      --accent-strong: #17483f;
+      --accent-soft: #dceee8;
+      --danger: #9b2c2c;
+      --shadow: 0 10px 28px rgba(45, 35, 20, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    button, select, input {
+      font: inherit;
+    }
+
+    button {
+      min-height: 40px;
+      padding: 8px 13px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    button:hover { border-color: #bfb4a5; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+
+    button.primary:hover {
+      border-color: var(--accent-strong);
+      background: var(--accent-strong);
+    }
+
+    button.danger {
+      color: var(--danger);
+    }
+
+    select, input {
+      width: 100%;
+      min-width: 0;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      color: var(--text);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(420px, 1fr);
+      min-height: 100vh;
+    }
+
+    .app > * {
+      min-width: 0;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: rgba(255, 254, 250, 0.92);
+      padding: 14px;
+      overflow-y: auto;
+    }
+
+    .score-shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 0;
+      min-height: 100vh;
+    }
+
+    .score-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 58px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 254, 250, 0.94);
+    }
+
+    .score-title {
+      min-width: 0;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .score-viewer {
+      overflow: auto;
+      padding: 16px;
+      background: linear-gradient(180deg, #f2efe9 0%, #ebe5da 100%);
+    }
+
+    .score-stage {
+      min-height: 100%;
+      display: grid;
+      align-items: start;
+      justify-items: center;
+    }
+
+    .score-page {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      background: white;
+      border-radius: 3px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08), 0 12px 28px rgba(0,0,0,0.16);
+    }
+
+    .panel {
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .title {
+      margin: 0 0 4px;
+      font-size: 24px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .field {
+      display: grid;
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .transport {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+      min-width: 0;
+    }
+
+    .transport button {
+      min-width: 0;
+      padding-left: 7px;
+      padding-right: 7px;
+    }
+
+    .time-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timeline {
+      position: relative;
+      height: 74px;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #f6f2ec;
+      touch-action: none;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .timeline canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #111;
+      pointer-events: none;
+    }
+
+    .marker-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(36, 94, 82, 0.82);
+      pointer-events: none;
+    }
+
+    .marker-line.section {
+      width: 3px;
+      background: rgba(155, 44, 44, 0.86);
+    }
+
+    .marker-label {
+      position: absolute;
+      top: 4px;
+      max-width: 120px;
+      transform: translateX(6px);
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: rgba(255, 254, 250, 0.9);
+      color: var(--danger);
+      font-size: 11px;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .marker-controls {
+      display: grid;
+      grid-template-columns: 1fr 84px;
+      gap: 8px;
+      margin-top: 12px;
+      min-width: 0;
+    }
+
+    .secondary-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+      min-width: 0;
+    }
+
+    .section-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 12px;
+      min-width: 0;
+    }
+
+    .list-heading {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .marker-list {
+      display: grid;
+      gap: 6px;
+      margin: 10px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .marker-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 8px;
+      background: #f5f1e9;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .marker-list button {
+      min-height: 28px;
+      padding: 3px 7px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .marker-main {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+    }
+
+    .marker-name {
+      overflow: hidden;
+      color: var(--text);
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .marker-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .message {
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 860px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .score-shell {
+        min-height: 70vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <section class="panel">
+        <h1 class="title">Score tagger</h1>
+        <p class="subtitle">Play a reference track, tag score page starts, and mark named song sections on the timeline.</p>
+
+        <div class="field">
+          <label for="songSelect">Song</label>
+          <select id="songSelect"></select>
+        </div>
+
+        <div class="field">
+          <label for="trackSelect">Track</label>
+          <select id="trackSelect"></select>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="transport">
+          <button id="back5" type="button">-5s</button>
+          <button id="playPause" class="primary" type="button">Play</button>
+          <button id="stop" type="button">Stop</button>
+          <button id="forward5" type="button">+5s</button>
+        </div>
+
+        <div class="time-row">
+          <span class="mono" id="currentTime">0:00.000</span>
+          <span class="mono" id="duration">0:00.000</span>
+        </div>
+
+        <div id="timeline" class="timeline" aria-label="Waveform timeline">
+          <canvas id="wave"></canvas>
+          <div id="markers"></div>
+          <div id="playhead" class="playhead"></div>
+        </div>
+
+        <audio id="audio" preload="metadata"></audio>
+      </section>
+
+      <section class="panel">
+        <div class="marker-controls">
+          <button id="nextPage" class="primary" type="button">Next page</button>
+          <button id="undo" type="button">Undo</button>
+        </div>
+        <div class="section-controls">
+          <input id="sectionName" type="text" placeholder="Section name" autocomplete="off" />
+          <button id="markSection" class="primary" type="button">Mark</button>
+        </div>
+        <div class="secondary-controls">
+          <button id="exportJson" type="button">Export JSON</button>
+          <button id="resetMarkers" class="danger" type="button">Reset</button>
+        </div>
+        <h2 class="list-heading">Pages</h2>
+        <ul id="markerList" class="marker-list"></ul>
+        <h2 class="list-heading">Sections</h2>
+        <ul id="sectionList" class="marker-list"></ul>
+      </section>
+    </aside>
+
+    <section class="score-shell">
+      <header class="score-top">
+        <div id="scoreName" class="score-title">Loading score...</div>
+        <span id="pageBadge" class="badge">Page -</span>
+      </header>
+      <div id="scoreViewer" class="score-viewer">
+        <div id="scoreStage" class="score-stage">
+          <div class="message">Loading...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (() => {
+    const LAST_STATE_KEY = 'choir-app-page-coder-state-v1';
+    const waveformFallbackUrl = './waveforms.json';
+
+    let repertoire = [];
+    let waveformCache = {};
+    let aggregateWaveformCache = null;
+    let currentSong = null;
+    let currentTrack = null;
+    let currentScore = null;
+    let pdfjsPromise = null;
+    let pdfDocument = null;
+    let renderToken = 0;
+    let currentPage = 1;
+    let pageStarts = [0];
+    let sections = [];
+    let nextSectionId = 1;
+    let actionStack = [];
+    let waveformSongKey = '';
+    let resizeTimer = null;
+
+    const el = {
+      songSelect: document.getElementById('songSelect'),
+      trackSelect: document.getElementById('trackSelect'),
+      back5: document.getElementById('back5'),
+      playPause: document.getElementById('playPause'),
+      stop: document.getElementById('stop'),
+      forward5: document.getElementById('forward5'),
+      currentTime: document.getElementById('currentTime'),
+      duration: document.getElementById('duration'),
+      timeline: document.getElementById('timeline'),
+      wave: document.getElementById('wave'),
+      markers: document.getElementById('markers'),
+      playhead: document.getElementById('playhead'),
+      audio: document.getElementById('audio'),
+      nextPage: document.getElementById('nextPage'),
+      undo: document.getElementById('undo'),
+      exportJson: document.getElementById('exportJson'),
+      resetMarkers: document.getElementById('resetMarkers'),
+      sectionName: document.getElementById('sectionName'),
+      markSection: document.getElementById('markSection'),
+      markerList: document.getElementById('markerList'),
+      sectionList: document.getElementById('sectionList'),
+      scoreName: document.getElementById('scoreName'),
+      pageBadge: document.getElementById('pageBadge'),
+      scoreViewer: document.getElementById('scoreViewer'),
+      scoreStage: document.getElementById('scoreStage'),
+    };
+
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const isMp3 = (file) => String(file?.name || '').toLowerCase().endsWith('.mp3');
+
+    function slug(name) {
+      return String(name || 'song')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase() || 'song';
+    }
+
+    function browserSafeUrl(url) {
+      const [path, query] = String(url || '').split('?');
+      const encodedPath = path.split('/').map((part) => encodeURIComponent(part)).join('/');
+      return query ? `${encodedPath}?${query}` : encodedPath;
+    }
+
+    function cacheBustedUrl(url, fingerprint) {
+      if (!fingerprint) return browserSafeUrl(url);
+      const sep = url.includes('?') ? '&' : '?';
+      return browserSafeUrl(`${url}${sep}v=${encodeURIComponent(fingerprint)}`);
+    }
+
+    function formatTime(seconds) {
+      const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+      const minutes = Math.floor(safe / 60);
+      const wholeSeconds = Math.floor(safe % 60);
+      const millis = Math.round((safe - Math.floor(safe)) * 1000);
+      return `${minutes}:${String(wholeSeconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+    }
+
+    function readSavedState() {
+      try {
+        return JSON.parse(localStorage.getItem(LAST_STATE_KEY) || 'null') || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function writeSavedState() {
+      if (!currentSong || !currentTrack) return;
+      localStorage.setItem(LAST_STATE_KEY, JSON.stringify({
+        song: currentSong.song,
+        trackUrl: currentTrack.url,
+        pageStarts,
+        sections,
+      }));
+    }
+
+    function setMessage(message) {
+      el.scoreStage.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'message';
+      div.textContent = message;
+      el.scoreStage.appendChild(div);
+    }
+
+    async function loadPdfJs() {
+      if (!pdfjsPromise) {
+        pdfjsPromise = import('./vendor/pdfjs/pdf.min.mjs').then((pdfjs) => {
+          pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
+          return pdfjs;
+        });
+      }
+      return pdfjsPromise;
+    }
+
+    async function loadPdf(score) {
+      pdfDocument = null;
+      currentPage = 1;
+      el.scoreName.textContent = score?.name || 'No score';
+      updatePageBadge();
+      if (!score?.url) {
+        setMessage('No score PDF found for this song.');
+        return;
+      }
+
+      setMessage('Loading score...');
+      const token = ++renderToken;
+      const pdfjs = await loadPdfJs();
+      const url = cacheBustedUrl(score.url, score.fingerprint);
+      pdfDocument = await pdfjs.getDocument({ url }).promise;
+      if (token !== renderToken) return;
+      await renderCurrentPage(token);
+    }
+
+    async function renderCurrentPage(token = ++renderToken) {
+      if (!pdfDocument) return;
+      const pageNo = clamp(currentPage, 1, pdfDocument.numPages);
+      currentPage = pageNo;
+      updatePageBadge();
+      el.scoreStage.innerHTML = '';
+      const page = await pdfDocument.getPage(pageNo);
+      if (token !== renderToken) return;
+
+      const availableWidth = Math.max(300, el.scoreViewer.clientWidth - 32);
+      const viewport = page.getViewport({ scale: 1 });
+      const cssScale = availableWidth / viewport.width;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const renderViewport = page.getViewport({ scale: cssScale * dpr });
+
+      const canvas = document.createElement('canvas');
+      canvas.className = 'score-page';
+      canvas.width = Math.floor(renderViewport.width);
+      canvas.height = Math.floor(renderViewport.height);
+      canvas.style.width = `${Math.floor(viewport.width * cssScale)}px`;
+      canvas.style.height = `${Math.floor(viewport.height * cssScale)}px`;
+      el.scoreStage.appendChild(canvas);
+
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: renderViewport }).promise;
+      if (token === renderToken) updatePageBadge();
+    }
+
+    function updatePageBadge() {
+      const total = pdfDocument?.numPages || 0;
+      el.pageBadge.textContent = total ? `Page ${currentPage}/${total}` : 'Page -';
+      el.nextPage.disabled = total ? currentPage >= total : true;
+      el.undo.disabled = actionStack.length === 0;
+    }
+
+    async function loadWaveformsForSong(song) {
+      if (!song || waveformSongKey === song.song) return;
+      waveformSongKey = song.song;
+      waveformCache = {};
+
+      try {
+        const res = await fetch(`./waveforms/${slug(song.song)}.json`, { cache: 'no-store' });
+        if (res.ok) {
+          waveformCache = await res.json();
+          return;
+        }
+      } catch (err) {
+        console.warn('split waveform fetch failed', err);
+      }
+
+      try {
+        if (!aggregateWaveformCache) {
+          const res = await fetch(waveformFallbackUrl, { cache: 'no-store' });
+          aggregateWaveformCache = res.ok ? await res.json() : {};
+        }
+        const urls = new Set((song.files || []).map((file) => file.url));
+        waveformCache = Object.fromEntries(Object.entries(aggregateWaveformCache).filter(([url]) => urls.has(url)));
+      } catch (err) {
+        console.warn('aggregate waveform fallback failed', err);
+      }
+    }
+
+    function selectedWaveform() {
+      return waveformCache[currentTrack?.url] || waveformCache[`../${currentTrack?.url}`] || null;
+    }
+
+    function drawWaveform() {
+      const canvas = el.wave;
+      const rect = el.timeline.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      const data = selectedWaveform()?.waveform || [];
+      const mid = rect.height / 2;
+      ctx.fillStyle = '#d9d1c4';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.strokeStyle = '#245e52';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+
+      if (!data.length) {
+        ctx.moveTo(0, mid);
+        ctx.lineTo(rect.width, mid);
+      } else {
+        data.forEach((amp, idx) => {
+          const x = (idx / Math.max(1, data.length - 1)) * rect.width;
+          const h = clamp(Number(amp) || 0, 0, 1) * rect.height * 0.44;
+          ctx.moveTo(x, mid - h);
+          ctx.lineTo(x, mid + h);
+        });
+      }
+
+      ctx.stroke();
+      drawTimelineOverlays();
+    }
+
+    function drawTimelineOverlays() {
+      const duration = el.audio.duration || selectedWaveform()?.duration || 0;
+      const pct = duration > 0 ? clamp(el.audio.currentTime / duration, 0, 1) : 0;
+      el.playhead.style.left = `${pct * 100}%`;
+      el.markers.innerHTML = '';
+      pageStarts.slice(1).forEach((time) => {
+        const marker = document.createElement('div');
+        marker.className = 'marker-line';
+        marker.style.left = `${clamp(time / Math.max(duration, 1), 0, 1) * 100}%`;
+        el.markers.appendChild(marker);
+      });
+      sections.forEach((section) => {
+        const left = `${clamp(section.start / Math.max(duration, 1), 0, 1) * 100}%`;
+        const marker = document.createElement('div');
+        marker.className = 'marker-line section';
+        marker.style.left = left;
+        const label = document.createElement('div');
+        label.className = 'marker-label';
+        label.style.left = left;
+        label.textContent = section.name;
+        el.markers.append(marker, label);
+      });
+    }
+
+    function renderMarkerList() {
+      el.markerList.innerHTML = '';
+      pageStarts.forEach((time, index) => {
+        const item = document.createElement('li');
+        const page = document.createElement('span');
+        const value = document.createElement('span');
+        page.textContent = `Page ${index + 1}`;
+        value.className = 'mono';
+        value.textContent = formatTime(time);
+        item.append(page, value);
+        el.markerList.appendChild(item);
+      });
+      updatePageBadge();
+      drawTimelineOverlays();
+    }
+
+    function pageForTime(time) {
+      let page = 1;
+      pageStarts.forEach((pageStart, idx) => {
+        if (time + 0.0005 >= pageStart) page = idx + 1;
+      });
+      return page;
+    }
+
+    function sortedSections() {
+      return sections
+        .map((section) => ({ ...section }))
+        .sort((a, b) => a.start - b.start || a.id - b.id);
+    }
+
+    function renderSectionList() {
+      el.sectionList.innerHTML = '';
+      sortedSections().forEach((section) => {
+        const item = document.createElement('li');
+        const main = document.createElement('div');
+        const name = document.createElement('div');
+        const meta = document.createElement('div');
+        const remove = document.createElement('button');
+
+        main.className = 'marker-main';
+        name.className = 'marker-name';
+        meta.className = 'marker-meta mono';
+        remove.className = 'danger';
+        remove.type = 'button';
+
+        name.textContent = section.name;
+        meta.textContent = `${formatTime(section.start)} · page ${pageForTime(section.start)}`;
+        remove.textContent = 'Delete';
+        remove.addEventListener('click', () => {
+          sections = sections.filter((item) => item.id !== section.id);
+          actionStack = actionStack.filter((action) => action.type !== 'section' || action.id !== section.id);
+          renderSectionList();
+          drawTimelineOverlays();
+          writeSavedState();
+        });
+
+        main.append(name, meta);
+        item.append(main, remove);
+        el.sectionList.appendChild(item);
+      });
+      updatePageBadge();
+      drawTimelineOverlays();
+    }
+
+    function setAudioSource(track) {
+      el.audio.src = cacheBustedUrl(track.url, track.fingerprint);
+      el.audio.load();
+      el.playPause.textContent = 'Play';
+      el.currentTime.textContent = formatTime(0);
+      el.duration.textContent = formatTime(selectedWaveform()?.duration || 0);
+      drawWaveform();
+    }
+
+    function tracksForSong(song) {
+      return (song?.files || [])
+        .filter(isMp3)
+        .filter((file) => !String(file.name || '').toLowerCase().includes('slow'))
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    }
+
+    async function selectSong(songName, preferredTrackUrl = '') {
+      currentSong = repertoire.find((entry) => entry.song === songName) || repertoire[0];
+      currentScore = currentSong?.score || null;
+      pageStarts = [0];
+      sections = [];
+      nextSectionId = 1;
+      actionStack = [];
+      currentPage = 1;
+      await loadWaveformsForSong(currentSong);
+
+      const tracks = tracksForSong(currentSong);
+      el.trackSelect.innerHTML = '';
+      tracks.forEach((track) => {
+        const option = document.createElement('option');
+        option.value = track.url;
+        option.textContent = track.name;
+        el.trackSelect.appendChild(option);
+      });
+
+      currentTrack = tracks.find((track) => track.url === preferredTrackUrl) || tracks[0] || null;
+      if (currentTrack) el.trackSelect.value = currentTrack.url;
+      if (currentTrack) setAudioSource(currentTrack);
+      renderMarkerList();
+      renderSectionList();
+      await loadPdf(currentScore);
+      writeSavedState();
+    }
+
+    function exportCurrentJson() {
+      if (!currentSong || !currentTrack || !currentScore) return;
+      const sectionStarts = sortedSections().map((section) => ({
+        name: section.name,
+        start: Number(section.start.toFixed(3)),
+        page: pageForTime(section.start),
+      }));
+      const payload = {
+        schema: 'choir-app-score-tags-v1',
+        createdAt: new Date().toISOString(),
+        song: currentSong.song,
+        score: {
+          name: currentScore.name,
+          url: currentScore.url,
+          fingerprint: currentScore.fingerprint,
+        },
+        referenceTrack: {
+          name: currentTrack.name,
+          url: currentTrack.url,
+          fingerprint: currentTrack.fingerprint,
+        },
+        pageStarts: pageStarts.map((time) => Number(time.toFixed(3))),
+        sections: sectionStarts,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slug(currentSong.song)}-page-sync.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    async function init() {
+      const saved = readSavedState();
+      const res = await fetch('./repertoire.json', { cache: 'no-store' });
+      repertoire = await res.json();
+
+      el.songSelect.innerHTML = '';
+      repertoire.forEach((entry) => {
+        const option = document.createElement('option');
+        option.value = entry.song;
+        option.textContent = entry.song;
+        el.songSelect.appendChild(option);
+      });
+
+      const initialSong = repertoire.some((entry) => entry.song === saved.song)
+        ? saved.song
+        : repertoire[0]?.song;
+      if (initialSong) el.songSelect.value = initialSong;
+      await selectSong(initialSong, saved.trackUrl);
+      if (Array.isArray(saved.pageStarts) && saved.song === currentSong?.song && saved.pageStarts.length) {
+        pageStarts = saved.pageStarts.map(Number).filter(Number.isFinite);
+        if (!pageStarts.length || pageStarts[0] !== 0) pageStarts.unshift(0);
+        currentPage = clamp(pageStarts.length, 1, pdfDocument?.numPages || pageStarts.length);
+        renderMarkerList();
+        renderCurrentPage();
+      }
+      if (Array.isArray(saved.sections) && saved.song === currentSong?.song) {
+        sections = saved.sections
+          .map((section, index) => ({
+            id: Number.isInteger(section.id) ? section.id : index + 1,
+            name: String(section.name || '').trim(),
+            start: Number(section.start),
+          }))
+          .filter((section) => section.name && Number.isFinite(section.start));
+        nextSectionId = sections.reduce((maxId, section) => Math.max(maxId, section.id), 0) + 1;
+        renderSectionList();
+      }
+      writeSavedState();
+    }
+
+    el.songSelect.addEventListener('change', () => selectSong(el.songSelect.value));
+    el.trackSelect.addEventListener('change', () => {
+      const tracks = tracksForSong(currentSong);
+      currentTrack = tracks.find((track) => track.url === el.trackSelect.value) || tracks[0] || null;
+      if (currentTrack) setAudioSource(currentTrack);
+      writeSavedState();
+    });
+
+    el.playPause.addEventListener('click', async () => {
+      if (el.audio.paused) {
+        await el.audio.play();
+      } else {
+        el.audio.pause();
+      }
+    });
+
+    el.stop.addEventListener('click', () => {
+      el.audio.pause();
+      el.audio.currentTime = 0;
+    });
+
+    el.back5.addEventListener('click', () => {
+      el.audio.currentTime = clamp(el.audio.currentTime - 5, 0, el.audio.duration || Infinity);
+    });
+
+    el.forward5.addEventListener('click', () => {
+      el.audio.currentTime = clamp(el.audio.currentTime + 5, 0, el.audio.duration || Infinity);
+    });
+
+    el.nextPage.addEventListener('click', async () => {
+      if (!pdfDocument || currentPage >= pdfDocument.numPages) return;
+      const start = Number(el.audio.currentTime.toFixed(3));
+      pageStarts.push(start);
+      actionStack.push({ type: 'page' });
+      currentPage += 1;
+      renderMarkerList();
+      writeSavedState();
+      await renderCurrentPage();
+    });
+
+    el.undo.addEventListener('click', async () => {
+      const last = actionStack.pop();
+      if (!last) return;
+      if (last.type === 'page' && pageStarts.length > 1) {
+        pageStarts.pop();
+        currentPage = Math.max(1, currentPage - 1);
+        renderMarkerList();
+        await renderCurrentPage();
+      } else if (last.type === 'section' && Number.isInteger(last.id)) {
+        sections = sections.filter((section) => section.id !== last.id);
+        renderSectionList();
+      }
+      writeSavedState();
+      updatePageBadge();
+    });
+
+    el.resetMarkers.addEventListener('click', async () => {
+      pageStarts = [0];
+      sections = [];
+      nextSectionId = 1;
+      actionStack = [];
+      currentPage = 1;
+      renderMarkerList();
+      renderSectionList();
+      writeSavedState();
+      await renderCurrentPage();
+    });
+
+    el.markSection.addEventListener('click', () => {
+      const name = el.sectionName.value.trim();
+      if (!name) {
+        el.sectionName.focus();
+        return;
+      }
+      const section = {
+        id: nextSectionId++,
+        name,
+        start: Number(el.audio.currentTime.toFixed(3)),
+      };
+      sections.push(section);
+      actionStack.push({ type: 'section', id: section.id });
+      el.sectionName.value = '';
+      renderSectionList();
+      writeSavedState();
+    });
+
+    el.sectionName.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        el.markSection.click();
+      }
+    });
+
+    el.exportJson.addEventListener('click', exportCurrentJson);
+
+    el.audio.addEventListener('play', () => { el.playPause.textContent = 'Pause'; });
+    el.audio.addEventListener('pause', () => { el.playPause.textContent = 'Play'; });
+    el.audio.addEventListener('loadedmetadata', () => {
+      el.duration.textContent = formatTime(el.audio.duration || selectedWaveform()?.duration || 0);
+      drawTimelineOverlays();
+    });
+    el.audio.addEventListener('timeupdate', () => {
+      el.currentTime.textContent = formatTime(el.audio.currentTime);
+      drawTimelineOverlays();
+    });
+
+    el.timeline.addEventListener('click', (event) => {
+      const duration = el.audio.duration || selectedWaveform()?.duration || 0;
+      if (!duration) return;
+      const rect = el.timeline.getBoundingClientRect();
+      const pct = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+      el.audio.currentTime = duration * pct;
+    });
+
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        drawWaveform();
+        renderCurrentPage();
+      }, 120);
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.target?.matches?.('select, input, textarea, button')) return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        el.playPause.click();
+      } else if (event.key.toLowerCase() === 'n' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        el.nextPage.click();
+      } else if (event.key.toLowerCase() === 'm') {
+        event.preventDefault();
+        el.sectionName.focus();
+      } else if (event.key.toLowerCase() === 'u') {
+        event.preventDefault();
+        el.undo.click();
+      }
+    });
+
+    init().catch((err) => {
+      console.error(err);
+      setMessage('Could not load page coder data.');
+    });
+  })();
+  </script>
+</body>
+</html>
