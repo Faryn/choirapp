@@ -301,6 +301,7 @@
     </div>
   </div>
 
+<script src="./vendor/choir/url-policy.js?v=20260628-2"></script>
 <script>
 (() => {
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -310,6 +311,12 @@
   const CACHE_STORE = 'audio-files';
   const PDF_CACHE_STORE = 'score-pdfs';
   const LAST_SELECTION_KEY = 'choir-app-last-selection-v1';
+  const PRACTICE_SETTINGS_KEY = 'choir-app-practice-settings-v1';
+  const MAX_DECODED_SONGS = 2;
+  const CACHE_BUDGET_BYTES = {
+    [CACHE_STORE]: 350 * 1024 * 1024,
+    [PDF_CACHE_STORE]: 80 * 1024 * 1024,
+  };
   const EXAMPLE_SECTION_MARKERS = {
     'nur-ein-wort': [
       { name: 'A', start: 0 },
@@ -366,6 +373,8 @@
   let A = 0, S = 0, B = 0;
   let lastAutoSyncAt = 0;
   let syncRequestId = 0;
+  const urlPolicy = window.ChoirUrlPolicy;
+  let currentRepertoireUrl = urlPolicy.DEFAULT_REPERTOIRE_URL;
 
   const el = {
     currentSongTitle: document.getElementById('currentSongTitle'),
@@ -547,41 +556,65 @@
     return safariFriendlyFiles(entry?.files || []).filter((file) => versionGroupForFile(file, entry) === currentGroup);
   }
 
-  function readLastSelection() {
+  function readJsonStorage(key, fallback = null) {
     try {
-      return JSON.parse(localStorage.getItem(LAST_SELECTION_KEY) || 'null') || null;
+      return JSON.parse(localStorage.getItem(key) || 'null') || fallback;
     } catch {
-      return null;
+      return fallback;
     }
   }
 
-  function writeLastSelection(trackIdx = currentTrackIndex) {
+  function repertoireSettingsKey() {
+    return currentRepertoireUrl || urlPolicy.DEFAULT_REPERTOIRE_URL;
+  }
+
+  function readPracticeSettings() {
+    const store = readJsonStorage(PRACTICE_SETTINGS_KEY, {}) || {};
+    const saved = store[repertoireSettingsKey()];
+    if (saved) return saved;
+    if (repertoireSettingsKey() === urlPolicy.DEFAULT_REPERTOIRE_URL) {
+      return readJsonStorage(LAST_SELECTION_KEY, null);
+    }
+    return null;
+  }
+
+  function applyPracticeSettings(saved) {
+    const nextRate = Number(saved?.playbackRate) || 1;
+    playbackRate = nextRate;
+    el.speedSelect.value = String(nextRate);
+    if (el.speedSelect.value !== String(nextRate)) {
+      playbackRate = 1;
+      el.speedSelect.value = '1';
+    }
+    el.loopEnabled.checked = saved?.loopEnabled === undefined ? true : Boolean(saved.loopEnabled);
+    updateBadges();
+  }
+
+  function writePracticeSettings(trackIdx = currentTrackIndex) {
     if (!currentSongEntry || !songTrackManifest.length) return;
     const file = songTrackManifest[trackIdx] || songTrackManifest[0];
     if (!file) return;
     try {
-      localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify({
+      const store = readJsonStorage(PRACTICE_SETTINGS_KEY, {}) || {};
+      const next = {
         song: currentSongEntry.song,
         group: currentGroup,
         trackUrl: file.url,
         trackName: file.name,
         savedAt: Date.now(),
-      }));
+      };
+      if (playbackRate !== 1) next.playbackRate = playbackRate;
+      if (!el.loopEnabled.checked) next.loopEnabled = false;
+      store[repertoireSettingsKey()] = next;
+      localStorage.setItem(PRACTICE_SETTINGS_KEY, JSON.stringify(store));
     } catch (err) {
-      console.warn('Could not persist last selection', err);
+      console.warn('Could not persist practice settings', err);
     }
   }
-  const cacheBustedUrl = (url, fingerprint) => {
-    if (!fingerprint) return url;
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}v=${encodeURIComponent(fingerprint)}`;
-  };
-
-  function browserSafeUrl(url) {
-    const [path, query] = url.split('?');
-    const encodedPath = path.split('/').map((part) => encodeURIComponent(part)).join('/');
-    return query ? `${encodedPath}?${query}` : encodedPath;
-  }
+  const cacheBustedUrl = urlPolicy.cacheBustedUrl;
+  const browserSafeUrl = urlPolicy.browserSafeUrl;
+  const repertoireUrlFromLocation = urlPolicy.repertoireUrlFromLocation;
+  const repertoireAssetUrl = (path) => urlPolicy.repertoireAssetUrl(currentRepertoireUrl, path);
 
   function setScoreMessage(message) {
     el.scorePages.innerHTML = '';
@@ -703,7 +736,7 @@
     if (!entry) return;
     const isCurrentLoad = () => loadToken === currentLoadToken && waveformSongKey === key;
 
-    const url = `./waveforms/${songSlug(entry.song)}.json`;
+    const url = repertoireAssetUrl(`waveforms/${songSlug(entry.song)}.json`);
     try {
       const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) {
@@ -719,7 +752,7 @@
     // Compatibility fallback for older deployments that only have the aggregate file.
     try {
       if (!aggregateWaveformCache) {
-        const res = await fetch('./waveforms.json', { cache: 'no-store' });
+        const res = await fetch(repertoireAssetUrl('waveforms.json'), { cache: 'no-store' });
         aggregateWaveformCache = res.ok ? await res.json() : {};
       }
       const urls = new Set((entry.files || []).map((file) => file.url));
@@ -761,6 +794,8 @@
       const req = store.get(key);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
+      tx.oncomplete = () => db.close();
+      tx.onerror = () => db.close();
     });
   }
 
@@ -768,14 +803,87 @@
     return cachePutTo(CACHE_STORE, record);
   }
 
-  async function cachePutTo(storeName, record) {
+  function cacheRecordSize(record) {
+    return Number(record?.byteLength || record?.arrayBuffer?.byteLength || 0);
+  }
+
+  async function cachePutTo(storeName, record, { trim = true } = {}) {
     const db = await openCacheDb();
-    return await new Promise((resolve, reject) => {
+    const normalized = {
+      ...record,
+      byteLength: cacheRecordSize(record),
+      lastUsedAt: Date.now(),
+    };
+    await new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
-      const req = store.put(record);
-      req.onsuccess = () => resolve();
+      const req = store.put(normalized);
       req.onerror = () => reject(req.error);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+    if (trim) await trimCacheStore(storeName);
+  }
+
+  async function trimCacheStore(storeName) {
+    const maxBytes = CACHE_BUDGET_BYTES[storeName];
+    if (!maxBytes) return;
+    const db = await openCacheDb();
+    const entries = [];
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        const value = cursor.value || {};
+        entries.push({
+          key: cursor.key,
+          size: cacheRecordSize(value),
+          lastUsedAt: Number(value.lastUsedAt || value.cachedAt || 0),
+        });
+        cursor.continue();
+      };
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => db.close();
+      tx.onerror = () => db.close();
+    });
+
+    let total = entries.reduce((sum, entry) => sum + entry.size, 0);
+    if (total <= maxBytes) return;
+
+    entries.sort((a, b) => a.lastUsedAt - b.lastUsedAt);
+    const keysToDelete = [];
+    for (const entry of entries) {
+      if (total <= maxBytes) break;
+      keysToDelete.push(entry.key);
+      total -= entry.size;
+    }
+    if (!keysToDelete.length) return;
+
+    const deleteDb = await openCacheDb();
+    await new Promise((resolve, reject) => {
+      const tx = deleteDb.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      keysToDelete.forEach((key) => store.delete(key));
+      tx.oncomplete = () => {
+        deleteDb.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        deleteDb.close();
+        reject(tx.error);
+      };
     });
   }
 
@@ -863,7 +971,7 @@
     // If files have effectively the same exported timeline, keep absolute time.
     // Active-range detection can misread quiet entrances as leading silence and
     // would otherwise introduce bogus offsets/stretching (e.g. Thank You stems).
-    const sameTimelineToleranceSec = 0.25;
+    const sameTimelineToleranceSec = 3.0;
     return Math.abs(t.buffer.duration - refDurationSec) > sameTimelineToleranceSec;
   }
 
@@ -1445,6 +1553,7 @@
     render();
     drawWaveform();
     if (isPlaying) playFrom(S);
+    writePracticeSettings();
     el.status.textContent = `looping ${sections[startIdx].name} to ${sections[endIdx].name}`;
   }
 
@@ -1516,10 +1625,20 @@
 
   function rememberDecodedSong() {
     if (!currentSongKey) return;
-    decodedSongCache.set(`${currentSongKey}::${currentGroup}`, {
-      manifestFingerprint: manifestFingerprint(),
-      tracks: tracks.slice(),
+    rememberDecodedSongSnapshot(`${currentSongKey}::${currentGroup}`, manifestFingerprint(), tracks.slice());
+  }
+
+  function rememberDecodedSongSnapshot(cacheKey, nextManifestFingerprint, nextTracks) {
+    if (decodedSongCache.has(cacheKey)) decodedSongCache.delete(cacheKey);
+    decodedSongCache.set(cacheKey, {
+      manifestFingerprint: nextManifestFingerprint,
+      tracks: nextTracks,
     });
+    while (decodedSongCache.size > MAX_DECODED_SONGS) {
+      const oldestKey = decodedSongCache.keys().next().value;
+      if (!oldestKey) break;
+      decodedSongCache.delete(oldestKey);
+    }
   }
 
   async function ensureTrackDecoded(idx, loadToken = currentLoadToken) {
@@ -1612,10 +1731,11 @@
       }
     }
     if (songKeyAtStart && songKeyAtStart === currentSongKey) {
-      decodedSongCache.set(`${songKeyAtStart}::${currentGroup}`, {
-        manifestFingerprint: JSON.stringify(songTrackManifest.map(f => [f.url, f.fingerprint])),
-        tracks: tracks.slice(),
-      });
+      rememberDecodedSongSnapshot(
+        `${songKeyAtStart}::${currentGroup}`,
+        JSON.stringify(songTrackManifest.map(f => [f.url, f.fingerprint])),
+        tracks.slice(),
+      );
       if (songTrackManifest.length > 0) {
         el.status.textContent = `ready (${tracks.filter(t => t?.buffer).length}/${songTrackManifest.length} tracks)`;
       }
@@ -1647,7 +1767,7 @@
 
   async function activatePreferredTrack(preferredTrackIndex, loadToken) {
     if (!Number.isInteger(preferredTrackIndex) || preferredTrackIndex <= 0 || preferredTrackIndex >= songTrackManifest.length) {
-      writeLastSelection(0);
+      writePracticeSettings(0);
       return;
     }
     try {
@@ -1657,7 +1777,7 @@
     } catch (err) {
       if (err?.name === 'AbortError') return;
       console.warn('Failed to restore last selected track', songTrackManifest[preferredTrackIndex]?.url, err);
-      writeLastSelection(0);
+      writePracticeSettings(0);
     }
   }
 
@@ -1819,24 +1939,24 @@
 
     if (wasPlaying) {
       playFrom(pausedAt);
-      if (el.autoSync.checked && next !== syncReferenceIndex()) {
-        setTimeout(() => autoSyncCurrentTrack({ restart: true, silent: true }), 180);
-      }
     }
 
     el.trackSelect.value = String(next);
     updateNudgeUI();
-    writeLastSelection(next);
+    writePracticeSettings(next);
     el.status.textContent = `switched (${loadedTrackCount()}/${songTrackManifest.length} decoded, ${cachedTrackCount()}/${songTrackManifest.length} cached)`;
   }
 
   async function loadRepertoire() {
-    const repRes = await fetch('./repertoire.json', { cache: 'no-store' });
-    if (!repRes.ok) throw new Error('Failed to fetch repertoire.json');
+    const repertoireUrl = repertoireUrlFromLocation();
+    currentRepertoireUrl = repertoireUrl;
+    const repRes = await fetch(repertoireUrl, { cache: 'no-store' });
+    if (!repRes.ok) throw new Error(`Failed to fetch ${repertoireUrl}`);
     repertoire = await repRes.json();
     populateSongSelect();
     if (repertoire.length > 0) {
-      const saved = readLastSelection();
+      const saved = readPracticeSettings();
+      applyPracticeSettings(saved);
       const savedSongIdx = saved?.song ? repertoire.findIndex((entry) => entry.song === saved.song) : -1;
       const songIdx = savedSongIdx >= 0 ? savedSongIdx : 0;
       if (saved?.group) currentGroup = saved.group;
@@ -1882,7 +2002,10 @@
     render();
   });
 
-  el.loopEnabled.addEventListener('change', updateBadges);
+  el.loopEnabled.addEventListener('change', () => {
+    updateBadges();
+    writePracticeSettings();
+  });
   el.scoreViewer.addEventListener('scroll', updatePageBadge, { passive: true });
 
   el.speedSelect.addEventListener('change', () => {
@@ -1900,6 +2023,7 @@
     el.status.textContent = playbackRate === 1
       ? 'tempo 100%'
       : `tempo ${Math.round(playbackRate * 100)}%`;
+    writePracticeSettings();
   });
 
   el.sectionStartSelect.addEventListener('change', () => {

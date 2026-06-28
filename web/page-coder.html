@@ -481,10 +481,12 @@
     </section>
   </main>
 
+  <script src="./vendor/choir/url-policy.js?v=20260628-2"></script>
   <script>
   (() => {
     const LAST_STATE_KEY = 'choir-app-page-coder-state-v1';
-    const waveformFallbackUrl = './waveforms.json';
+    const urlPolicy = window.ChoirUrlPolicy;
+    const waveformFallbackUrl = 'waveforms.json';
 
     let repertoire = [];
     let waveformCache = {};
@@ -502,6 +504,7 @@
     let actionStack = [];
     let waveformSongKey = '';
     let resizeTimer = null;
+    let currentRepertoireUrl = urlPolicy.DEFAULT_REPERTOIRE_URL;
 
     const el = {
       songSelect: document.getElementById('songSelect'),
@@ -543,17 +546,10 @@
         .toLowerCase() || 'song';
     }
 
-    function browserSafeUrl(url) {
-      const [path, query] = String(url || '').split('?');
-      const encodedPath = path.split('/').map((part) => encodeURIComponent(part)).join('/');
-      return query ? `${encodedPath}?${query}` : encodedPath;
-    }
-
-    function cacheBustedUrl(url, fingerprint) {
-      if (!fingerprint) return browserSafeUrl(url);
-      const sep = url.includes('?') ? '&' : '?';
-      return browserSafeUrl(`${url}${sep}v=${encodeURIComponent(fingerprint)}`);
-    }
+    const browserSafeUrl = urlPolicy.browserSafeUrl;
+    const cacheBustedUrl = urlPolicy.cacheBustedUrl;
+    const repertoireUrlFromLocation = urlPolicy.repertoireUrlFromLocation;
+    const repertoireAssetUrl = (path) => urlPolicy.repertoireAssetUrl(currentRepertoireUrl, path);
 
     function formatTime(seconds) {
       const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
@@ -671,7 +667,7 @@
       waveformCache = {};
 
       try {
-        const res = await fetch(`./waveforms/${slug(song.song)}.json`, { cache: 'no-store' });
+        const res = await fetch(repertoireAssetUrl(`waveforms/${slug(song.song)}.json`), { cache: 'no-store' });
         if (res.ok) {
           waveformCache = await res.json();
           return;
@@ -682,7 +678,7 @@
 
       try {
         if (!aggregateWaveformCache) {
-          const res = await fetch(waveformFallbackUrl, { cache: 'no-store' });
+          const res = await fetch(repertoireAssetUrl(waveformFallbackUrl), { cache: 'no-store' });
           aggregateWaveformCache = res.ok ? await res.json() : {};
         }
         const urls = new Set((song.files || []).map((file) => file.url));
@@ -898,7 +894,10 @@
 
     async function init() {
       const saved = readSavedState();
-      const res = await fetch('./repertoire.json', { cache: 'no-store' });
+      const repertoireUrl = repertoireUrlFromLocation();
+      currentRepertoireUrl = repertoireUrl;
+      const res = await fetch(repertoireUrl, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Failed to fetch ${repertoireUrl}`);
       repertoire = await res.json();
 
       el.songSelect.innerHTML = '';

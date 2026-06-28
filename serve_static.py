@@ -26,13 +26,33 @@ IMMUTABLE_EXTENSIONS = {
     ".webp",
     ".svg",
 }
-NO_CACHE_NAMES = {"/", "/index.html", "/repertoire.json", "/waveforms.json"}
+NO_CACHE_NAMES = {"/", "/index.html", "/repertoire.json", "/waveforms.json", "/vendor/choir/url-policy.js"}
 
 
 class ChoirStaticHandler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         self.send_header("Cache-Control", self.cache_control_for_path())
+        self.send_header("Content-Security-Policy", self.content_security_policy())
+        self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+        self.send_header("Permissions-Policy", "camera=(), geolocation=(), microphone=()")
+        self.send_header("Referrer-Policy", "same-origin")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
         super().end_headers()
+
+    def content_security_policy(self) -> str:
+        return "; ".join([
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "media-src 'self' blob:",
+            "connect-src 'self'",
+            "worker-src 'self' blob:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "frame-ancestors 'none'",
+        ])
 
     def cache_control_for_path(self) -> str:
         parsed = urlsplit(self.path)

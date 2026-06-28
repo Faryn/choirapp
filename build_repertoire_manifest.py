@@ -5,7 +5,9 @@ from pathlib import Path
 
 AUDIO_EXTS = {'.mp3', '.m4a'}
 SCORE_EXTS = {'.pdf'}
-PUBLIC_DATA_PREFIX = 'data/repertoire/01_Aktuelles_Repertoire'
+REPO_ROOT = Path(__file__).resolve().parent
+DEFAULT_REPERTOIRE_ROOT = REPO_ROOT / "data" / "repertoire" / "01_Aktuelles_Repertoire"
+DEFAULT_PUBLIC_DATA_PREFIX = 'data/repertoire/01_Aktuelles_Repertoire'
 
 
 def parse_args() -> argparse.Namespace:
@@ -13,7 +15,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--root",
         type=Path,
-        default=Path("/home/paul/.openclaw/workspace/choir-app/data/repertoire/01_Aktuelles_Repertoire"),
+        default=DEFAULT_REPERTOIRE_ROOT,
         help="Repertoire source directory containing one folder per song.",
     )
     parser.add_argument(
@@ -22,25 +24,44 @@ def parse_args() -> argparse.Namespace:
         default=Path("/home/paul/.openclaw/workspace/choir-app/instances/test/web"),
         help="Instance web root that should receive repertoire.json.",
     )
+    parser.add_argument(
+        "--public-prefix",
+        help="Browser-visible prefix for files under --root. Defaults to data/repertoire/<root> when possible.",
+    )
     return parser.parse_args()
 
 
-def public_file_url(path: Path, root: Path) -> str:
+def path_absolute(path: Path) -> Path:
+    expanded = path.expanduser()
+    return expanded if expanded.is_absolute() else Path.cwd() / expanded
+
+
+def infer_public_prefix(root: Path, explicit: str | None) -> str:
+    if explicit:
+        return explicit.strip().strip('/')
+    try:
+        rel = root.relative_to(REPO_ROOT / "data" / "repertoire").as_posix()
+        return f"data/repertoire/{rel}"
+    except ValueError:
+        return DEFAULT_PUBLIC_DATA_PREFIX
+
+
+def public_file_url(path: Path, root: Path, public_prefix: str) -> str:
     """Return the browser-visible URL for a repertoire file.
 
     The web server exposes choir-app/web as its document root, with web/data as
     a symlink to ../data. Avoid ../data URLs because browsers resolve those to
     /data from the root page and static servers may not expose parent paths.
     """
-    return f"{PUBLIC_DATA_PREFIX}/{path.relative_to(root).as_posix()}"
+    return f"{public_prefix}/{path.relative_to(root).as_posix()}"
 
 
-def public_audio_url(path: Path, root: Path) -> str:
-    return public_file_url(path, root)
+def public_audio_url(path: Path, root: Path, public_prefix: str) -> str:
+    return public_file_url(path, root, public_prefix)
 
 
-def public_score_url(path: Path, root: Path) -> str:
-    return public_file_url(path, root)
+def public_score_url(path: Path, root: Path, public_prefix: str) -> str:
+    return public_file_url(path, root, public_prefix)
 
 def infer_group(display: str) -> str:
     parts = display.replace('\\', '/').split('/')
@@ -87,8 +108,9 @@ def load_sections(song_dir: Path) -> list[dict]:
 
 def main() -> None:
     args = parse_args()
-    root = args.root.resolve()
+    root = path_absolute(args.root)
     web_dir = args.web_dir.resolve()
+    public_prefix = infer_public_prefix(root, args.public_prefix)
     out = web_dir / "repertoire.json"
 
     manifest = []
@@ -102,7 +124,7 @@ def main() -> None:
             display = os.path.relpath(path, song_dir).replace(os.sep, '/')
             score_files.append({
                 'name': display,
-                'url': public_score_url(path, root),
+                'url': public_score_url(path, root, public_prefix),
                 'fingerprint': f"{int(st.st_mtime)}-{st.st_size}",
                 'size': st.st_size,
                 'mtime': int(st.st_mtime),
@@ -115,7 +137,7 @@ def main() -> None:
             if path.suffix.lower() not in AUDIO_EXTS:
                 continue
             st = path.stat()
-            rel = public_audio_url(path, root)
+            rel = public_audio_url(path, root, public_prefix)
             display = os.path.relpath(path, song_dir).replace(os.sep, '/')
             files.append({
                 'name': display,

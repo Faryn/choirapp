@@ -169,16 +169,21 @@ def build_metadata(source_root: Path, web_dir: Path, include_waveforms: bool, dr
         ], dry_run=dry_run)
 
 
-def http_get(url: str, attempts: int = 8, delay: float = 0.35) -> str:
+def http_response(url: str, attempts: int = 8, delay: float = 0.35) -> tuple[str, object]:
     last_error = None
     for _ in range(attempts):
         try:
             with urllib.request.urlopen(url, timeout=5) as response:
-                return response.read().decode("utf-8")
+                return response.read().decode("utf-8"), response.headers
         except OSError as err:
             last_error = err
             time.sleep(delay)
     raise RuntimeError(f"HTTP check failed for {url}: {last_error}")
+
+
+def http_get(url: str, attempts: int = 8, delay: float = 0.35) -> str:
+    body, _headers = http_response(url, attempts, delay)
+    return body
 
 
 def smoke_check(instance: str) -> None:
@@ -189,7 +194,20 @@ def smoke_check(instance: str) -> None:
         raise RuntimeError(f"{service} is {state}")
 
     base = f"http://127.0.0.1:{port}"
-    index = http_get(f"{base}/")
+    index, headers = http_response(f"{base}/")
+    required_headers = {
+        "Content-Security-Policy": "default-src 'self'",
+        "Referrer-Policy": "same-origin",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+    }
+    missing_headers = [
+        name for name, expected in required_headers.items()
+        if expected not in str(headers.get(name, ""))
+    ]
+    if missing_headers:
+        raise RuntimeError(f"{instance} response missing security headers: {missing_headers}")
+
     required = ["Set loop", "score-pdfs"]
     forbidden = ["Loop Spike", "Little Pilots rehearsal desk"]
     missing = [text for text in required if text not in index]
@@ -198,6 +216,10 @@ def smoke_check(instance: str) -> None:
         raise RuntimeError(f"{instance} page missing expected text: {missing}")
     if stale:
         raise RuntimeError(f"{instance} page contains stale text: {stale}")
+
+    helper = http_get(f"{base}/vendor/choir/url-policy.js")
+    if "ChoirUrlPolicy" not in helper:
+        raise RuntimeError(f"{instance} missing shared URL policy helper")
 
     manifest = json.loads(http_get(f"{base}/repertoire.json"))
     by_song = {entry.get("song"): entry for entry in manifest}

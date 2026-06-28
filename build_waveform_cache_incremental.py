@@ -8,7 +8,9 @@ from pathlib import Path
 
 AUDIO_EXTS = {'.mp3', '.m4a'}
 SAMPLES = 128
-PUBLIC_DATA_PREFIX = 'data/repertoire/01_Aktuelles_Repertoire'
+REPO_ROOT = Path(__file__).resolve().parent
+DEFAULT_REPERTOIRE_ROOT = REPO_ROOT / "data" / "repertoire" / "01_Aktuelles_Repertoire"
+DEFAULT_PUBLIC_DATA_PREFIX = 'data/repertoire/01_Aktuelles_Repertoire'
 
 
 def parse_args() -> argparse.Namespace:
@@ -16,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--root",
         type=Path,
-        default=Path("/home/paul/.openclaw/workspace/choir-app/data/repertoire/01_Aktuelles_Repertoire"),
+        default=DEFAULT_REPERTOIRE_ROOT,
         help="Repertoire source directory containing one folder per song.",
     )
     parser.add_argument(
@@ -25,11 +27,30 @@ def parse_args() -> argparse.Namespace:
         default=Path("/home/paul/.openclaw/workspace/choir-app/instances/test/web"),
         help="Instance web root that should receive waveform cache files.",
     )
+    parser.add_argument(
+        "--public-prefix",
+        help="Browser-visible prefix for files under --root. Defaults to data/repertoire/<root> when possible.",
+    )
     return parser.parse_args()
 
 
-def public_audio_url(path: Path, root: Path) -> str:
-    return f"{PUBLIC_DATA_PREFIX}/{path.relative_to(root).as_posix()}"
+def path_absolute(path: Path) -> Path:
+    expanded = path.expanduser()
+    return expanded if expanded.is_absolute() else Path.cwd() / expanded
+
+
+def infer_public_prefix(root: Path, explicit: str | None) -> str:
+    if explicit:
+        return explicit.strip().strip('/')
+    try:
+        rel = root.relative_to(REPO_ROOT / "data" / "repertoire").as_posix()
+        return f"data/repertoire/{rel}"
+    except ValueError:
+        return DEFAULT_PUBLIC_DATA_PREFIX
+
+
+def public_audio_url(path: Path, root: Path, public_prefix: str) -> str:
+    return f"{public_prefix}/{path.relative_to(root).as_posix()}"
 
 
 def song_slug(name: str) -> str:
@@ -38,9 +59,9 @@ def song_slug(name: str) -> str:
     return value or 'song'
 
 
-def write_split_waveforms(cache: dict, split_dir: Path) -> int:
+def write_split_waveforms(cache: dict, split_dir: Path, public_prefix: str) -> int:
     by_song = {}
-    prefix = PUBLIC_DATA_PREFIX + '/'
+    prefix = public_prefix + '/'
     for url, meta in cache.items():
         if not url.startswith(prefix):
             continue
@@ -94,8 +115,9 @@ def ffmpeg_waveform(path: Path):
 
 def main() -> None:
     args = parse_args()
-    root = args.root.resolve()
+    root = path_absolute(args.root)
     web_dir = args.web_dir.resolve()
+    public_prefix = infer_public_prefix(root, args.public_prefix)
     out = web_dir / "waveforms.json"
     split_dir = web_dir / "waveforms"
 
@@ -112,7 +134,7 @@ def main() -> None:
         if not path.is_file() or path.suffix.lower() not in AUDIO_EXTS:
             continue
         st = path.stat()
-        rel = public_audio_url(path, root)
+        rel = public_audio_url(path, root, public_prefix)
         fingerprint = f"{int(st.st_mtime)}-{st.st_size}"
         existing = cache.get(rel)
         if existing and existing.get('fingerprint') == fingerprint:
@@ -144,7 +166,7 @@ def main() -> None:
             print(f'skip {rel}: {e}')
 
     print(f'done, {count} updated')
-    split_count = write_split_waveforms(cache, split_dir)
+    split_count = write_split_waveforms(cache, split_dir, public_prefix)
     print(f'wrote {split_count} split waveform files')
 
 

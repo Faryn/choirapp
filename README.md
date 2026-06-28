@@ -40,6 +40,18 @@ Deploy the current working tree to test:
 python3 deploy_instance.py test --restart
 ```
 
+Run local test checks against the test instance:
+
+```bash
+node tests/url-policy.test.js
+node tests/http-contract.test.js
+node tests/browser-smoke.test.js
+CHOIR_TEST_URL=http://127.0.0.1/choir-test/ node tests/browser-smoke.test.js
+```
+
+The browser smoke covers the default repertoire, the `?r=aliento` alternate
+repertoire, score canvas rendering, and page-coder loading.
+
 Deploy an exact Git ref to prod:
 
 ```bash
@@ -54,6 +66,25 @@ python3 deploy_instance.py promote --from-ref main --tag prod-YYYY-MM-DD-N --res
 
 Add `--waveforms` when waveform metadata needs to be regenerated. Systemd unit
 templates live in `infra/systemd/`.
+
+### Alternate repertoire manifests
+
+The player and page coder load `./repertoire.json` by default. To test or share
+another song set, pass a URL parameter:
+
+```text
+/choir-test/?r=aliento
+/choir-test/?songs=data/repertoire/02_Aliento
+/choir-test/?songs=data/repertoire/02_Test_Repertoire
+/choir-test/?repertoire=data/repertoire/02_Test_Repertoire/repertoire.json
+```
+
+For safety, both parameters only accept same-site paths under `data/repertoire/`;
+remote URLs and paths with `..` are ignored. `songs` points at a web-exposed
+folder that contains `repertoire.json`. `repertoire` points directly at a
+manifest JSON file. `r` is a short alias for known repertoires, currently
+`aliento`. The manifest itself still decides the media/PDF URLs, so alternate
+folders need their own generated manifest.
 
 Default change workflow:
 
