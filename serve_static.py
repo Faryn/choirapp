@@ -26,7 +26,18 @@ IMMUTABLE_EXTENSIONS = {
     ".webp",
     ".svg",
 }
-NO_CACHE_NAMES = {"/", "/index.html", "/repertoire.json", "/waveforms.json", "/vendor/choir/url-policy.js"}
+NO_CACHE_NAMES = {
+    "/",
+    "/index.html",
+    "/repertoire.json",
+    "/waveforms.json",
+    "/vendor/choir/media-cache.js",
+    "/vendor/choir/practice-domain.js",
+    "/vendor/choir/pdf-viewer.js",
+    "/vendor/choir/practice-settings.js",
+    "/vendor/choir/repertoire-data.js",
+    "/vendor/choir/url-policy.js",
+}
 
 
 class ChoirStaticHandler(SimpleHTTPRequestHandler):

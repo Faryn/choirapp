@@ -44,6 +44,11 @@ Run local test checks against the test instance:
 
 ```bash
 node tests/url-policy.test.js
+node tests/repertoire-data.test.js
+node tests/pdf-viewer.test.js
+node tests/practice-settings.test.js
+node tests/media-cache.test.js
+node tests/practice-domain.test.js
 node tests/http-contract.test.js
 node tests/browser-smoke.test.js
 CHOIR_TEST_URL=http://127.0.0.1/choir-test/ node tests/browser-smoke.test.js

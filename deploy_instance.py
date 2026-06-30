@@ -208,7 +208,7 @@ def smoke_check(instance: str) -> None:
     if missing_headers:
         raise RuntimeError(f"{instance} response missing security headers: {missing_headers}")
 
-    required = ["Set loop", "score-pdfs"]
+    required = ["Set loop", "media-cache.js"]
     forbidden = ["Loop Spike", "Little Pilots rehearsal desk"]
     missing = [text for text in required if text not in index]
     stale = [text for text in forbidden if text in index]
@@ -220,6 +220,10 @@ def smoke_check(instance: str) -> None:
     helper = http_get(f"{base}/vendor/choir/url-policy.js")
     if "ChoirUrlPolicy" not in helper:
         raise RuntimeError(f"{instance} missing shared URL policy helper")
+
+    cache_helper = http_get(f"{base}/vendor/choir/media-cache.js")
+    if "score-pdfs" not in cache_helper:
+        raise RuntimeError(f"{instance} missing media cache helper")
 
     manifest = json.loads(http_get(f"{base}/repertoire.json"))
     by_song = {entry.get("song"): entry for entry in manifest}

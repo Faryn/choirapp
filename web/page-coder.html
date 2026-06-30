@@ -482,10 +482,14 @@
   </main>
 
   <script src="./vendor/choir/url-policy.js?v=20260628-2"></script>
+  <script src="./vendor/choir/repertoire-data.js?v=20260629-1"></script>
+  <script src="./vendor/choir/pdf-viewer.js?v=20260629-1"></script>
   <script>
   (() => {
     const LAST_STATE_KEY = 'choir-app-page-coder-state-v1';
     const urlPolicy = window.ChoirUrlPolicy;
+    const repertoireData = window.ChoirRepertoireData;
+    const pdfViewer = window.ChoirPdfViewer;
     const waveformFallbackUrl = 'waveforms.json';
 
     let repertoire = [];
@@ -494,7 +498,6 @@
     let currentSong = null;
     let currentTrack = null;
     let currentScore = null;
-    let pdfjsPromise = null;
     let pdfDocument = null;
     let renderToken = 0;
     let currentPage = 1;
@@ -537,14 +540,7 @@
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     const isMp3 = (file) => String(file?.name || '').toLowerCase().endsWith('.mp3');
 
-    function slug(name) {
-      return String(name || 'song')
-        .normalize('NFKD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .toLowerCase() || 'song';
-    }
+    const slug = repertoireData.songSlug;
 
     const browserSafeUrl = urlPolicy.browserSafeUrl;
     const cacheBustedUrl = urlPolicy.cacheBustedUrl;
@@ -591,21 +587,7 @@
     }
 
     function setMessage(message) {
-      el.scoreStage.innerHTML = '';
-      const div = document.createElement('div');
-      div.className = 'message';
-      div.textContent = message;
-      el.scoreStage.appendChild(div);
-    }
-
-    async function loadPdfJs() {
-      if (!pdfjsPromise) {
-        pdfjsPromise = import('./vendor/pdfjs/pdf.min.mjs').then((pdfjs) => {
-          pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
-          return pdfjs;
-        });
-      }
-      return pdfjsPromise;
+      pdfViewer.showMessage(el.scoreStage, message, 'message');
     }
 
     async function loadPdf(score) {
@@ -620,9 +602,8 @@
 
       setMessage('Loading score...');
       const token = ++renderToken;
-      const pdfjs = await loadPdfJs();
       const url = cacheBustedUrl(score.url, score.fingerprint);
-      pdfDocument = await pdfjs.getDocument({ url }).promise;
+      pdfDocument = await pdfViewer.loadDocument({ url });
       if (token !== renderToken) return;
       await renderCurrentPage(token);
     }
@@ -632,25 +613,15 @@
       const pageNo = clamp(currentPage, 1, pdfDocument.numPages);
       currentPage = pageNo;
       updatePageBadge();
-      el.scoreStage.innerHTML = '';
-      const page = await pdfDocument.getPage(pageNo);
-      if (token !== renderToken) return;
-
-      const availableWidth = Math.max(300, el.scoreViewer.clientWidth - 32);
-      const viewport = page.getViewport({ scale: 1 });
-      const cssScale = availableWidth / viewport.width;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const renderViewport = page.getViewport({ scale: cssScale * dpr });
-
-      const canvas = document.createElement('canvas');
-      canvas.className = 'score-page';
-      canvas.width = Math.floor(renderViewport.width);
-      canvas.height = Math.floor(renderViewport.height);
-      canvas.style.width = `${Math.floor(viewport.width * cssScale)}px`;
-      canvas.style.height = `${Math.floor(viewport.height * cssScale)}px`;
-      el.scoreStage.appendChild(canvas);
-
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport: renderViewport }).promise;
+      await pdfViewer.renderPage({
+        pdfDocument,
+        pageNo,
+        container: el.scoreStage,
+        viewer: el.scoreViewer,
+        minWidth: 300,
+        padding: 32,
+        isCurrent: () => token === renderToken,
+      });
       if (token === renderToken) updatePageBadge();
     }
 
@@ -665,27 +636,16 @@
       if (!song || waveformSongKey === song.song) return;
       waveformSongKey = song.song;
       waveformCache = {};
-
-      try {
-        const res = await fetch(repertoireAssetUrl(`waveforms/${slug(song.song)}.json`), { cache: 'no-store' });
-        if (res.ok) {
-          waveformCache = await res.json();
-          return;
-        }
-      } catch (err) {
-        console.warn('split waveform fetch failed', err);
-      }
-
-      try {
-        if (!aggregateWaveformCache) {
-          const res = await fetch(repertoireAssetUrl(waveformFallbackUrl), { cache: 'no-store' });
-          aggregateWaveformCache = res.ok ? await res.json() : {};
-        }
-        const urls = new Set((song.files || []).map((file) => file.url));
-        waveformCache = Object.fromEntries(Object.entries(aggregateWaveformCache).filter(([url]) => urls.has(url)));
-      } catch (err) {
-        console.warn('aggregate waveform fallback failed', err);
-      }
+      const result = await repertoireData.loadSongWaveforms({
+        song,
+        assetUrl: repertoireAssetUrl,
+        aggregateCache: aggregateWaveformCache,
+        fallbackPath: waveformFallbackUrl,
+        shouldUseResult: () => waveformSongKey === song.song,
+      });
+      if (!result) return;
+      waveformCache = result.waveformCache;
+      aggregateWaveformCache = result.aggregateCache;
     }
 
     function selectedWaveform() {

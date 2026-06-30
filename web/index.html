@@ -302,21 +302,16 @@
   </div>
 
 <script src="./vendor/choir/url-policy.js?v=20260628-2"></script>
+<script src="./vendor/choir/repertoire-data.js?v=20260629-1"></script>
+<script src="./vendor/choir/pdf-viewer.js?v=20260629-1"></script>
+<script src="./vendor/choir/practice-settings.js?v=20260629-1"></script>
+<script src="./vendor/choir/media-cache.js?v=20260629-1"></script>
+<script src="./vendor/choir/practice-domain.js?v=20260629-1"></script>
 <script>
 (() => {
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   const ctx = new AudioCtx();
-  const CACHE_DB_NAME = 'choir-app-audio-cache';
-  const CACHE_DB_VERSION = 2;
-  const CACHE_STORE = 'audio-files';
-  const PDF_CACHE_STORE = 'score-pdfs';
-  const LAST_SELECTION_KEY = 'choir-app-last-selection-v1';
-  const PRACTICE_SETTINGS_KEY = 'choir-app-practice-settings-v1';
   const MAX_DECODED_SONGS = 2;
-  const CACHE_BUDGET_BYTES = {
-    [CACHE_STORE]: 350 * 1024 * 1024,
-    [PDF_CACHE_STORE]: 80 * 1024 * 1024,
-  };
   const EXAMPLE_SECTION_MARKERS = {
     'nur-ein-wort': [
       { name: 'A', start: 0 },
@@ -344,7 +339,6 @@
   let currentSongEntry = null;
   let currentScoreUrl = '';
   let scoreRenderToken = 0;
-  let pdfjsPromise = null;
   let scoreResizeTimer = null;
   let scoreRenderedWidth = 0;
   let currentGroup = 'main';
@@ -374,6 +368,11 @@
   let lastAutoSyncAt = 0;
   let syncRequestId = 0;
   const urlPolicy = window.ChoirUrlPolicy;
+  const repertoireData = window.ChoirRepertoireData;
+  const pdfViewer = window.ChoirPdfViewer;
+  const practiceSettings = window.ChoirPracticeSettings;
+  const mediaCache = window.ChoirMediaCache;
+  const practiceDomain = window.ChoirPracticeDomain;
   let currentRepertoireUrl = urlPolicy.DEFAULT_REPERTOIRE_URL;
 
   const el = {
@@ -439,143 +438,47 @@
   nativeAudio.mozPreservesPitch = true;
   nativeAudio.webkitPreservesPitch = true;
   new MutationObserver(() => updateBadges()).observe(el.status, { childList: true, characterData: true, subtree: true });
-  const songSlug = (name) => String(name || 'song')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase() || 'song';
+  const songSlug = repertoireData.songSlug;
 
   function normalizedSections(entry = currentSongEntry) {
-    if (currentGroup !== 'main') return [];
-    const source = Array.isArray(entry?.sections) && entry.sections.length
-      ? entry.sections
-      : EXAMPLE_SECTION_MARKERS[songSlug(entry?.song)];
-    if (!source?.length) return [];
-    const d = dur();
-    return source
-      .map((item) => ({
-        name: String(item.name || item.label || '').trim(),
-        start: Number(item.start ?? item.time ?? item.at ?? 0),
-      }))
-      .filter((item) => item.name && Number.isFinite(item.start) && item.start >= 0 && (!d || item.start <= d + 0.25))
-      .sort((a, b) => a.start - b.start);
+    return practiceDomain.normalizeSections({
+      entry,
+      currentGroup,
+      duration: dur(),
+      exampleMarkers: EXAMPLE_SECTION_MARKERS,
+      songSlug,
+    });
   }
 
   function currentSectionAt(seconds = S) {
-    const sections = normalizedSections();
-    if (!sections.length) return null;
-    let current = sections[0];
-    for (const section of sections) {
-      if (section.start <= seconds + 0.05) current = section;
-      else break;
-    }
-    return current;
+    return practiceDomain.currentSectionAt(normalizedSections(), seconds);
   }
 
   function snapToSegmentMarker(seconds) {
     const d = dur();
     const sections = normalizedSections();
-    if (!d || !sections.length || !Number.isFinite(seconds)) return seconds;
-
     const rect = el.timeline.getBoundingClientRect();
-    const threshold = d * (12 / Math.max(rect.width, 1));
-    const markers = [...sections.map((section) => section.start), d]
-      .filter((value) => Number.isFinite(value) && value >= 0 && value <= d);
-    let best = seconds;
-    let bestDistance = Infinity;
-    markers.forEach((marker) => {
-      const distance = Math.abs(marker - seconds);
-      if (distance < bestDistance) {
-        best = marker;
-        bestDistance = distance;
-      }
+    return practiceDomain.snapToSegmentMarker({
+      seconds,
+      duration: d,
+      sections,
+      timelineWidth: rect.width,
     });
-    return bestDistance <= threshold ? best : seconds;
-  }
-
-  function fallbackVersionGroup(file) {
-    const group = String(file?.group || 'main');
-    if (/^(champion|playback|reference)$/i.test(group)) return 'main';
-    return group || 'main';
-  }
-
-  function mainDurationForEntry(entry = currentSongEntry) {
-    const durations = safariFriendlyFiles(entry?.files || [])
-      .filter((file) => fallbackVersionGroup(file) === 'main')
-      .filter((file) => !/slow|schneckentempo|coda/i.test(file.name || ''))
-      .map((file) => Number(waveformCache[file.url]?.duration || 0))
-      .filter((duration) => duration >= 45)
-      .sort((a, b) => a - b);
-    if (!durations.length) return 0;
-
-    const clusters = [];
-    for (const duration of durations) {
-      const cluster = clusters.find((item) => Math.abs(item.center - duration) <= 5);
-      if (cluster) {
-        cluster.values.push(duration);
-        cluster.center = cluster.values.reduce((sum, value) => sum + value, 0) / cluster.values.length;
-      } else {
-        clusters.push({ center: duration, values: [duration] });
-      }
-    }
-    clusters.sort((a, b) => b.values.length - a.values.length || b.center - a.center);
-    const values = clusters[0].values.slice().sort((a, b) => a - b);
-    return values[Math.floor(values.length / 2)] || 0;
-  }
-
-  function versionGroupForFile(file, entry = currentSongEntry) {
-    const fallback = fallbackVersionGroup(file);
-    if (fallback !== 'main') return fallback;
-
-    const name = String(file?.name || '');
-    if (/slow|schneckentempo/i.test(name)) return 'slow';
-    if (/coda/i.test(name)) return 'coda';
-
-    const mainDuration = mainDurationForEntry(entry);
-    const duration = Number(waveformCache[file?.url]?.duration || 0);
-    if (!mainDuration || !duration) return 'main';
-
-    const tolerance = Math.max(3, mainDuration * 0.025);
-    if (Math.abs(duration - mainDuration) <= tolerance) return 'main';
-    if (duration < mainDuration * 0.55) return 'short';
-    return 'alternate';
   }
 
   function versionGroupsForEntry(entry = currentSongEntry) {
-    const seen = new Set();
-    safariFriendlyFiles(entry?.files || []).forEach((file) => seen.add(versionGroupForFile(file, entry)));
-    return [...seen].sort((a, b) => {
-      if (a === 'main') return -1;
-      if (b === 'main') return 1;
-      return a.localeCompare(b);
-    });
+    return practiceDomain.versionGroupsForEntry(entry, waveformCache);
   }
 
   function filesForCurrentVersion(entry = currentSongEntry) {
-    return safariFriendlyFiles(entry?.files || []).filter((file) => versionGroupForFile(file, entry) === currentGroup);
-  }
-
-  function readJsonStorage(key, fallback = null) {
-    try {
-      return JSON.parse(localStorage.getItem(key) || 'null') || fallback;
-    } catch {
-      return fallback;
-    }
-  }
-
-  function repertoireSettingsKey() {
-    return currentRepertoireUrl || urlPolicy.DEFAULT_REPERTOIRE_URL;
+    return practiceDomain.filesForVersion(entry, currentGroup, waveformCache);
   }
 
   function readPracticeSettings() {
-    const store = readJsonStorage(PRACTICE_SETTINGS_KEY, {}) || {};
-    const saved = store[repertoireSettingsKey()];
-    if (saved) return saved;
-    if (repertoireSettingsKey() === urlPolicy.DEFAULT_REPERTOIRE_URL) {
-      return readJsonStorage(LAST_SELECTION_KEY, null);
-    }
-    return null;
+    return practiceSettings.read({
+      repertoireUrl: currentRepertoireUrl,
+      defaultRepertoireUrl: urlPolicy.DEFAULT_REPERTOIRE_URL,
+    });
   }
 
   function applyPracticeSettings(saved) {
@@ -595,18 +498,15 @@
     const file = songTrackManifest[trackIdx] || songTrackManifest[0];
     if (!file) return;
     try {
-      const store = readJsonStorage(PRACTICE_SETTINGS_KEY, {}) || {};
-      const next = {
+      practiceSettings.write({
+        repertoireUrl: currentRepertoireUrl,
+        defaultRepertoireUrl: urlPolicy.DEFAULT_REPERTOIRE_URL,
         song: currentSongEntry.song,
         group: currentGroup,
-        trackUrl: file.url,
-        trackName: file.name,
-        savedAt: Date.now(),
-      };
-      if (playbackRate !== 1) next.playbackRate = playbackRate;
-      if (!el.loopEnabled.checked) next.loopEnabled = false;
-      store[repertoireSettingsKey()] = next;
-      localStorage.setItem(PRACTICE_SETTINGS_KEY, JSON.stringify(store));
+        file,
+        playbackRate,
+        loopEnabled: el.loopEnabled.checked,
+      });
     } catch (err) {
       console.warn('Could not persist practice settings', err);
     }
@@ -617,12 +517,8 @@
   const repertoireAssetUrl = (path) => urlPolicy.repertoireAssetUrl(currentRepertoireUrl, path);
 
   function setScoreMessage(message) {
-    el.scorePages.innerHTML = '';
     el.pageBadge.textContent = 'Page —';
-    const div = document.createElement('div');
-    div.className = 'score-message';
-    div.textContent = message;
-    el.scorePages.appendChild(div);
+    pdfViewer.showMessage(el.scorePages, message, 'score-message');
   }
 
   function updatePageBadge() {
@@ -648,58 +544,25 @@
     el.pageBadge.textContent = `Page ${bestIdx + 1}/${pages.length}`;
   }
 
-  async function loadPdfJs() {
-    if (!pdfjsPromise) {
-      pdfjsPromise = import('./vendor/pdfjs/pdf.min.mjs').then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
-        return pdfjs;
-      });
-    }
-    return pdfjsPromise;
-  }
-
   async function renderPdfPages(url, token) {
-    setScoreMessage('Loading score…');
-    try {
-      const pdfjs = await loadPdfJs();
-      if (token !== scoreRenderToken) return;
-
-      const pdfData = await loadPdfData(url);
-      if (token !== scoreRenderToken) return;
-
-      const pdf = await pdfjs.getDocument({ data: pdfData }).promise;
-      if (token !== scoreRenderToken) return;
-
-      el.scorePages.innerHTML = '';
-      const availableWidth = Math.max(280, el.scoreViewer.clientWidth - 20);
-      scoreRenderedWidth = availableWidth;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-      for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
-        if (token !== scoreRenderToken) return;
-        const page = await pdf.getPage(pageNo);
-        const viewport = page.getViewport({ scale: 1 });
-        const cssScale = availableWidth / viewport.width;
-        const renderScale = cssScale * dpr;
-        const renderViewport = page.getViewport({ scale: renderScale });
-
-        const canvas = document.createElement('canvas');
-        canvas.className = 'score-page';
-        canvas.width = Math.floor(renderViewport.width);
-        canvas.height = Math.floor(renderViewport.height);
-        canvas.style.width = `${Math.floor(viewport.width * cssScale)}px`;
-        canvas.style.height = `${Math.floor(viewport.height * cssScale)}px`;
-        el.scorePages.appendChild(canvas);
-
-        const ctx2d = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx2d, viewport: renderViewport }).promise;
-        if (token === scoreRenderToken) updatePageBadge();
-      }
-      if (token === scoreRenderToken) updatePageBadge();
-    } catch (err) {
-      console.warn('PDF.js score render failed', err);
-      if (token === scoreRenderToken) setScoreMessage('Could not render the score here. Use “Open PDF” above.');
-    }
+    const result = await pdfViewer.renderAllPages({
+      url,
+      dataLoader: loadPdfData,
+      container: el.scorePages,
+      viewer: el.scoreViewer,
+      minWidth: 280,
+      padding: 20,
+      messageClass: 'score-message',
+      loadingMessage: 'Loading score…',
+      errorMessage: 'Could not render the score here. Use “Open PDF” above.',
+      isCurrent: () => token === scoreRenderToken,
+      onPageRendered: updatePageBadge,
+      onComplete: ({ width }) => {
+        scoreRenderedWidth = width;
+        updatePageBadge();
+      },
+    });
+    if (result?.width) scoreRenderedWidth = result.width;
   }
 
   function renderScore(entry) {
@@ -734,162 +597,20 @@
     waveformSongKey = key;
     waveformCache = {};
     if (!entry) return;
-    const isCurrentLoad = () => loadToken === currentLoadToken && waveformSongKey === key;
-
-    const url = repertoireAssetUrl(`waveforms/${songSlug(entry.song)}.json`);
-    try {
-      const res = await fetch(url, { cache: 'no-store' });
-      if (res.ok) {
-        const nextCache = await res.json();
-        if (!isCurrentLoad()) return;
-        waveformCache = nextCache;
-        return;
-      }
-    } catch (err) {
-      console.warn('split waveform fetch failed', url, err);
-    }
-
-    // Compatibility fallback for older deployments that only have the aggregate file.
-    try {
-      if (!aggregateWaveformCache) {
-        const res = await fetch(repertoireAssetUrl('waveforms.json'), { cache: 'no-store' });
-        aggregateWaveformCache = res.ok ? await res.json() : {};
-      }
-      const urls = new Set((entry.files || []).map((file) => file.url));
-      if (!isCurrentLoad()) return;
-      waveformCache = Object.fromEntries(Object.entries(aggregateWaveformCache).filter(([fileUrl]) => urls.has(fileUrl)));
-    } catch (err) {
-      console.warn('aggregate waveform fallback failed', err);
-      if (!isCurrentLoad()) return;
-      waveformCache = {};
-    }
-  }
-
-  function openCacheDb() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(CACHE_STORE)) {
-          db.createObjectStore(CACHE_STORE, { keyPath: 'key' });
-        }
-        if (!db.objectStoreNames.contains(PDF_CACHE_STORE)) {
-          db.createObjectStore(PDF_CACHE_STORE, { keyPath: 'key' });
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+    const result = await repertoireData.loadSongWaveforms({
+      song: entry,
+      assetUrl: repertoireAssetUrl,
+      aggregateCache: aggregateWaveformCache,
+      shouldUseResult: () => loadToken === currentLoadToken && waveformSongKey === key,
     });
-  }
-
-  async function cacheGet(key) {
-    return cacheGetFrom(CACHE_STORE, key);
-  }
-
-  async function cacheGetFrom(storeName, key) {
-    const db = await openCacheDb();
-    return await new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readonly');
-      const store = tx.objectStore(storeName);
-      const req = store.get(key);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => db.close();
-    });
-  }
-
-  async function cachePut(record) {
-    return cachePutTo(CACHE_STORE, record);
-  }
-
-  function cacheRecordSize(record) {
-    return Number(record?.byteLength || record?.arrayBuffer?.byteLength || 0);
-  }
-
-  async function cachePutTo(storeName, record, { trim = true } = {}) {
-    const db = await openCacheDb();
-    const normalized = {
-      ...record,
-      byteLength: cacheRecordSize(record),
-      lastUsedAt: Date.now(),
-    };
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readwrite');
-      const store = tx.objectStore(storeName);
-      const req = store.put(normalized);
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
-    });
-    if (trim) await trimCacheStore(storeName);
-  }
-
-  async function trimCacheStore(storeName) {
-    const maxBytes = CACHE_BUDGET_BYTES[storeName];
-    if (!maxBytes) return;
-    const db = await openCacheDb();
-    const entries = [];
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readonly');
-      const store = tx.objectStore(storeName);
-      const req = store.openCursor();
-      req.onsuccess = () => {
-        const cursor = req.result;
-        if (!cursor) {
-          resolve();
-          return;
-        }
-        const value = cursor.value || {};
-        entries.push({
-          key: cursor.key,
-          size: cacheRecordSize(value),
-          lastUsedAt: Number(value.lastUsedAt || value.cachedAt || 0),
-        });
-        cursor.continue();
-      };
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => db.close();
-    });
-
-    let total = entries.reduce((sum, entry) => sum + entry.size, 0);
-    if (total <= maxBytes) return;
-
-    entries.sort((a, b) => a.lastUsedAt - b.lastUsedAt);
-    const keysToDelete = [];
-    for (const entry of entries) {
-      if (total <= maxBytes) break;
-      keysToDelete.push(entry.key);
-      total -= entry.size;
-    }
-    if (!keysToDelete.length) return;
-
-    const deleteDb = await openCacheDb();
-    await new Promise((resolve, reject) => {
-      const tx = deleteDb.transaction(storeName, 'readwrite');
-      const store = tx.objectStore(storeName);
-      keysToDelete.forEach((key) => store.delete(key));
-      tx.oncomplete = () => {
-        deleteDb.close();
-        resolve();
-      };
-      tx.onerror = () => {
-        deleteDb.close();
-        reject(tx.error);
-      };
-    });
+    if (!result) return;
+    waveformCache = result.waveformCache;
+    aggregateWaveformCache = result.aggregateCache;
   }
 
   async function loadPdfData(url) {
     try {
-      const cached = await cacheGetFrom(PDF_CACHE_STORE, url);
+      const cached = await mediaCache.getPdf(url);
       if (cached?.arrayBuffer) return cached.arrayBuffer.slice(0);
     } catch (err) {
       console.warn('PDF cache read failed', err);
@@ -899,7 +620,7 @@
     if (!res.ok) throw new Error(`PDF HTTP ${res.status}`);
     const arrayBuffer = await res.arrayBuffer();
     try {
-      await cachePutTo(PDF_CACHE_STORE, {
+      await mediaCache.putPdf({
         key: url,
         arrayBuffer,
         cachedAt: Date.now(),
@@ -1401,10 +1122,7 @@
   }
 
   function trackOptionLabel(t, idx) {
-    const suffixes = [];
-    if (tracks[idx]?.buffer) suffixes.push('loaded');
-    else if (trackCacheState[idx]) suffixes.push('cached');
-    return suffixes.length ? `${t.name} (${suffixes.join(', ')})` : t.name;
+    return practiceDomain.trackOptionLabel(t, idx, tracks, trackCacheState);
   }
 
   function updateTrackCacheDisplay() {
@@ -1417,17 +1135,7 @@
   }
 
   function inferTrackSection(name) {
-    const n = String(name || '').toLowerCase();
-    const tokens = n.split(/[^a-z0-9]+/).filter(Boolean);
-    const hasVoiceToken = (letters) => tokens.some((token) => new RegExp(`^${letters}(?:\\d+(?:_?\\d+)*)?$`).test(token));
-    if (/tutti|playback|original|aufnahme|demo|reference|chor/.test(n)) return 'Tutti / Reference';
-    if (/beatbox/.test(n)) return 'Beatbox';
-    if (/sopran|soprano/.test(n) || hasVoiceToken('s')) return 'Soprano';
-    if (/alt|alto/.test(n) || hasVoiceToken('a')) return 'Alto';
-    if (/mezzo/.test(n) || hasVoiceToken('m')) return 'Mezzo';
-    if (/tenor/.test(n) || hasVoiceToken('t')) return 'Tenor';
-    if (/bass|bariton/.test(n) || hasVoiceToken('b')) return 'Bass';
-    return 'Other';
+    return practiceDomain.inferTrackSection(name);
   }
 
   function populateSongSelect() {
@@ -1487,15 +1195,15 @@
   }
 
   function sectionEndTime(sections, idx) {
-    return sections[idx + 1]?.start ?? dur();
+    return practiceDomain.sectionEndTime(sections, idx, dur());
   }
 
   function sectionOptionLabel(section) {
-    return `${section.name} · ${fmtShortTime(section.start)}`;
+    return practiceDomain.sectionOptionLabel(section, fmtShortTime);
   }
 
   function sectionEndOptionLabel(sections, idx) {
-    return `${sections[idx].name} · ${fmtShortTime(sectionEndTime(sections, idx))}`;
+    return practiceDomain.sectionEndOptionLabel(sections, idx, dur(), fmtShortTime);
   }
 
   function rebuildSectionEndOptions() {
@@ -1591,10 +1299,6 @@
     el.status.textContent = 'loaded';
   }
 
-  function safariFriendlyFiles(files) {
-    return files.filter((file) => /\.(mp3|m4a)$/i.test(file.name));
-  }
-
   function abortActiveFetch() {
     if (!activeFetchController) return;
     try { activeFetchController.abort(); } catch {}
@@ -1608,7 +1312,7 @@
   async function inspectCachedTracks(loadToken = currentLoadToken) {
     const states = await Promise.all(songTrackManifest.map(async (file) => {
       try {
-        const cached = await cacheGet(cacheKeyForFile(file));
+        const cached = await mediaCache.getAudio(cacheKeyForFile(file));
         return Boolean(cached?.arrayBuffer);
       } catch (err) {
         console.warn('cache inspection failed', file.url, err);
@@ -1657,7 +1361,7 @@
       let loadedFromPersistentCache = false;
 
       try {
-        const cached = await cacheGet(cacheKey);
+        const cached = await mediaCache.getAudio(cacheKey);
         if (cached?.arrayBuffer) {
           arr = cached.arrayBuffer;
           loadedFromPersistentCache = true;
@@ -1677,7 +1381,7 @@
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         arr = await res.arrayBuffer();
         try {
-          await cachePut({
+          await mediaCache.putAudio({
             key: cacheKey,
             url: file.url,
             fingerprint: file.fingerprint || null,
