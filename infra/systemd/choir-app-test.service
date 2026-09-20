@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/home/paul/.openclaw/workspace/choir-app
-ExecStart=/usr/bin/python3 /home/paul/.openclaw/workspace/choir-app/serve_static.py --port 5175 --host 0.0.0.0 --directory /home/paul/.openclaw/workspace/choir-app/instances/test/web --analytics-db /home/paul/.openclaw/workspace/choir-app/instances/test/analytics.sqlite3 --analytics-secret /home/paul/.openclaw/workspace/choir-app/instances/test/analytics-secret.key
+ExecStart=/usr/bin/python3 /home/paul/.openclaw/workspace/choir-app/serve_static.py --port 5175 --host 0.0.0.0 --directory /home/paul/.openclaw/workspace/choir-app/instances/test/web --analytics-db /home/paul/.openclaw/workspace/choir-app/instances/test/analytics.sqlite3 --analytics-secret /home/paul/.openclaw/workspace/choir-app/instances/test/analytics-secret.key --analytics-title "Choir app test analytics"
 Restart=on-failure
 RestartSec=3
 

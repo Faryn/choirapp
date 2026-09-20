@@ -145,7 +145,7 @@ class AnalyticsStore:
         return counts, now
 
 
-def analytics_dashboard(counts: dict[str, int], now: dt.datetime) -> str:
+def analytics_dashboard(counts: dict[str, int], now: dt.datetime, title: str) -> str:
     cards = [
         ("Today", counts["day"]),
         ("This week", counts["week"]),
@@ -159,7 +159,7 @@ def analytics_dashboard(counts: dict[str, int], now: dt.datetime) -> str:
     updated = html.escape(now.strftime("%d %b %Y, %H:%M %Z"))
     return f"""<!doctype html>
 <html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
-<title>Choir app test analytics</title>
+<title>{html.escape(title)}</title>
 <style>
 body {{ max-width: 760px; margin: 40px auto; padding: 0 20px; font: 16px system-ui, sans-serif; color: #17231f; background: #f5f7f4; }}
 h1 {{ margin-bottom: 6px; }} .cards {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 28px 0; }}
@@ -167,7 +167,7 @@ section {{ padding: 18px; background: white; border-radius: 12px; box-shadow: 0 
 strong {{ display: block; font-size: 42px; margin-top: 8px; }} p, small {{ color: #52635a; }}
 @media (max-width: 480px) {{ .cards {{ grid-template-columns: 1fr; }} }}
 </style>
-<h1>Choir app · test analytics</h1><small>Updated {updated}</small>
+<h1>{html.escape(title)}</h1><small>Updated {updated}</small>
 <div class=\"cards\">{card_html}</div>
 <p>Privacy: no IP addresses or request logs are retained. Counts use independent, non-reversible HMAC tokens scoped to each reporting period, so visitors cannot be linked across periods.</p>
 </html>"""
@@ -175,6 +175,7 @@ strong {{ display: block; font-size: 42px; margin-top: 8px; }} p, small {{ color
 
 class ChoirStaticHandler(SimpleHTTPRequestHandler):
     analytics: AnalyticsStore | None = None
+    analytics_title = "Choir app analytics"
 
     def do_GET(self) -> None:
         path = urlsplit(self.path).path
@@ -183,7 +184,7 @@ class ChoirStaticHandler(SimpleHTTPRequestHandler):
                 self.send_error(404)
                 return
             counts, now = self.analytics.report()
-            body = analytics_dashboard(counts, now).encode("utf-8")
+            body = analytics_dashboard(counts, now, self.analytics_title).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -257,6 +258,11 @@ def main() -> None:
         "--analytics-secret",
         help="Path to the local HMAC secret (required with --analytics-db).",
     )
+    parser.add_argument(
+        "--analytics-title",
+        default="Choir app analytics",
+        help="Title displayed by the analytics dashboard.",
+    )
     args = parser.parse_args()
 
     if bool(args.analytics_db) != bool(args.analytics_secret):
@@ -266,6 +272,7 @@ def main() -> None:
     handler = partial(ChoirStaticHandler, directory=str(directory))
     if args.analytics_db:
         ChoirStaticHandler.analytics = AnalyticsStore(Path(args.analytics_db), Path(args.analytics_secret))
+        ChoirStaticHandler.analytics_title = args.analytics_title
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"Serving choir app from {directory} on http://{args.host}:{args.port}", flush=True)
     server.serve_forever()
