@@ -83,6 +83,7 @@ class AnalyticsStore:
                 "CREATE INDEX IF NOT EXISTS visitor_periods_lookup "
                 "ON visitor_periods (period_type, period_key)"
             )
+        self.purge_expired()
 
     def _load_or_create_secret(self) -> bytes:
         self.secret_path.parent.mkdir(parents=True, exist_ok=True)
@@ -118,6 +119,35 @@ class AnalyticsStore:
         payload = f"{period_type}:{period_key}:{address}".encode("utf-8")
         return hmac.new(self._secret, payload, hashlib.sha256).hexdigest()
 
+    @staticmethod
+    def _month_key(year: int, month: int, months_ago: int) -> str:
+        absolute_month = year * 12 + month - 1 - months_ago
+        return f"{absolute_month // 12:04d}-{absolute_month % 12 + 1:02d}"
+
+    @classmethod
+    def _retention_cutoffs(cls, now: dt.datetime) -> dict[str, str]:
+        # Keep only the current period plus the stated number of prior periods.
+        week_start = now.date() - dt.timedelta(days=now.weekday())
+        week_year, week_number, _ = (week_start - dt.timedelta(weeks=52)).isocalendar()
+        return {
+            "day": (now.date() - dt.timedelta(days=89)).isoformat(),
+            "week": f"{week_year}-W{week_number:02d}",
+            "month": cls._month_key(now.year, now.month, 23),
+            "year": f"{now.year - 4:04d}",
+        }
+
+    def _purge_expired(self, conn: sqlite3.Connection, now: dt.datetime) -> None:
+        for period_type, cutoff in self._retention_cutoffs(now).items():
+            conn.execute(
+                "DELETE FROM visitor_periods WHERE period_type = ? AND period_key < ?",
+                (period_type, cutoff),
+            )
+
+    def purge_expired(self) -> None:
+        """Delete expired, period-scoped visitor tokens."""
+        with self._lock, self._connect() as conn:
+            self._purge_expired(conn, dt.datetime.now(BERLIN_TZ))
+
     def record_visit(self, address: str) -> None:
         now = dt.datetime.now(BERLIN_TZ)
         rows = [
@@ -125,6 +155,7 @@ class AnalyticsStore:
             for period_type, period_key in self._periods(now).items()
         ]
         with self._lock, self._connect() as conn:
+            self._purge_expired(conn, now)
             conn.executemany(
                 "INSERT OR IGNORE INTO visitor_periods "
                 "(period_type, period_key, visitor_token, first_seen_at) VALUES (?, ?, ?, ?)",
