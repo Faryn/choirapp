@@ -153,6 +153,8 @@ const practiceStateExpression = `(() => {
     scoreOpen: document.querySelector('#scoreOpen')?.href || '',
     scoreMessage: document.querySelector('#scorePages')?.innerText || '',
     speedValue: document.querySelector('#speedSelect')?.value || '',
+    channelMixDisabled: Boolean(document.querySelector('#channelMixSelect')?.disabled),
+    channelMixHint: document.querySelector('#channelMixHint')?.textContent || '',
     loopEnabled: Boolean(document.querySelector('#loopEnabled')?.checked),
     currentSeconds: document.querySelector('#sVal')?.textContent || '',
     trackValue: document.querySelector('#trackSelect')?.value || '',
@@ -196,6 +198,23 @@ const pageCoderStateExpression = `(() => ({
     );
     assert.equal(restored.speedValue, '0.85');
     assert.equal(restored.loopEnabled, false);
+    assert.equal(restored.channelMixDisabled, true, 'channel mix should be unavailable below 100% tempo');
+    assert.match(restored.channelMixHint, /Stereo playback only below 100% tempo/);
+
+    await page.send('Runtime.evaluate', { expression: `(() => {
+      const speed = document.querySelector('#speedSelect');
+      speed.value = '1';
+      speed.dispatchEvent(new Event('change'));
+      document.querySelector('#play').click();
+    })()`, userGesture: true });
+    const playback = await waitForEvaluation(
+      page,
+      `(() => ({ status: document.querySelector('#status')?.textContent || '', channelMixDisabled: Boolean(document.querySelector('#channelMixSelect')?.disabled) }))()`,
+      (value) => /^playing/.test(value.status),
+      'decoded audio playback',
+    );
+    assert.equal(playback.channelMixDisabled, false, 'channel mix should be available at 100% tempo');
+    await page.send('Runtime.evaluate', { expression: `document.querySelector('#stop').click()`, userGesture: true });
 
     const switched = await page.send('Runtime.evaluate', { expression: `(() => {
       const before = document.querySelector('#sVal')?.textContent || '';

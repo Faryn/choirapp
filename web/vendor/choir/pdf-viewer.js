@@ -1,4 +1,5 @@
 (function () {
+  const PDFJS_VERSION = '6.2.108';
   let pdfjsPromise = null;
   let pdfJsLoader = null;
 
@@ -9,8 +10,8 @@
 
   async function loadPdfJs() {
     if (!pdfjsPromise) {
-      const loader = pdfJsLoader || (() => import('../pdfjs/pdf.min.mjs').then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
+      const loader = pdfJsLoader || (() => import(`../pdfjs/pdf.min.mjs?v=${PDFJS_VERSION}`).then((pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = `./vendor/pdfjs/pdf.worker.min.mjs?v=${PDFJS_VERSION}`;
         return pdfjs;
       }));
       pdfjsPromise = loader();

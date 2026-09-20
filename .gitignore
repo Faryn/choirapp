@@ -25,3 +25,6 @@ instances/*/web/page-coder.html
 instances/*/web/vendor/
 instances/*/web/waveforms.json
 instances/*/web/waveforms/
+# Instance-local visitor analytics database and HMAC key.
+instances/*/analytics.sqlite3
+instances/*/analytics-secret.key

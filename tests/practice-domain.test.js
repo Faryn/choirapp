@@ -41,6 +41,11 @@ const domain = window.ChoirPracticeDomain;
   ]);
   assert.deepEqual(JSON.parse(JSON.stringify(domain.currentSectionAt(sections, 12.01))), { name: 'B', start: 12 });
   assert.equal(domain.normalizeSections({ entry: { sections: [{ name: 'A', start: 0 }] }, currentGroup: 'slow' }).length, 0);
+  assert.equal(domain.normalizeSections({
+    entry: { song: 'Song' },
+    exampleMarkers: { song: [{ name: 'Old fallback', start: 0 }] },
+    songSlug: () => 'song',
+  }).length, 0);
 }
 
 {

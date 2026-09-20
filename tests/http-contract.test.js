@@ -22,13 +22,15 @@ async function get(path) {
   const html = await index.text();
   assert.match(html, /vendor\/choir\/url-policy\.js\?v=20260628-2/);
   assert.match(html, /vendor\/choir\/repertoire-data\.js\?v=20260629-1/);
-  assert.match(html, /vendor\/choir\/pdf-viewer\.js\?v=20260629-1/);
+  assert.match(html, /vendor\/choir\/pdf-viewer\.js\?v=20260801-1/);
   assert.match(html, /vendor\/choir\/practice-settings\.js\?v=20260629-1/);
   assert.match(html, /vendor\/choir\/media-cache\.js\?v=20260629-1/);
   assert.match(html, /vendor\/choir\/practice-domain\.js\?v=20260629-1/);
+  assert.match(html, /vendor\/choir\/audio-engine\.js\?v=20260710-1/);
+  assert.match(html, /vendor\/choir\/media-session\.js\?v=20260710-1/);
+  assert.match(html, /vendor\/choir\/playback-controller\.js\?v=20260801-1/);
   assert.doesNotMatch(html, /%2520/);
-  const alignTolerance = Number(html.match(/const sameTimelineToleranceSec = ([0-9.]+)/)?.[1] || 0);
-  assert.equal(alignTolerance >= 3, true, 'same-timeline alignment tolerance should cover short export tails');
+  assert.doesNotMatch(html, /EXAMPLE_SECTION_MARKERS/);
 
   const helper = await get('vendor/choir/url-policy.js?v=20260628-2');
   assert.match(helper.headers.get('cache-control') || '', /no-cache/);
@@ -38,9 +40,11 @@ async function get(path) {
   assert.match(dataHelper.headers.get('cache-control') || '', /no-cache/);
   assert.match(await dataHelper.text(), /ChoirRepertoireData/);
 
-  const pdfHelper = await get('vendor/choir/pdf-viewer.js?v=20260629-1');
+  const pdfHelper = await get('vendor/choir/pdf-viewer.js?v=20260801-1');
   assert.match(pdfHelper.headers.get('cache-control') || '', /no-cache/);
-  assert.match(await pdfHelper.text(), /ChoirPdfViewer/);
+  const pdfHelperText = await pdfHelper.text();
+  assert.match(pdfHelperText, /ChoirPdfViewer/);
+  assert.match(pdfHelperText, /PDFJS_VERSION = '6\.2\.108'/);
 
   const settingsHelper = await get('vendor/choir/practice-settings.js?v=20260629-1');
   assert.match(settingsHelper.headers.get('cache-control') || '', /no-cache/);
@@ -54,11 +58,32 @@ async function get(path) {
   assert.match(domainHelper.headers.get('cache-control') || '', /no-cache/);
   assert.match(await domainHelper.text(), /ChoirPracticeDomain/);
 
+  const audioHelper = await get('vendor/choir/audio-engine.js?v=20260710-1');
+  assert.match(audioHelper.headers.get('cache-control') || '', /no-cache/);
+  const audioHelperText = await audioHelper.text();
+  assert.match(audioHelperText, /ChoirAudioEngine/);
+  const alignTolerance = Number(audioHelperText.match(/sameTimelineToleranceSec = ([0-9.]+)/)?.[1] || 0);
+  assert.equal(alignTolerance >= 3, true, 'same-timeline alignment tolerance should cover short export tails');
+
+  const mediaSessionHelper = await get('vendor/choir/media-session.js?v=20260710-1');
+  assert.match(mediaSessionHelper.headers.get('cache-control') || '', /no-cache/);
+  assert.match(await mediaSessionHelper.text(), /ChoirMediaSession/);
+
+  const playbackControllerHelper = await get('vendor/choir/playback-controller.js?v=20260801-1');
+  assert.match(playbackControllerHelper.headers.get('cache-control') || '', /no-cache/);
+  assert.match(await playbackControllerHelper.text(), /ChoirPlaybackController/);
+
   const manifest = await get('repertoire.json');
   const repertoire = await manifest.json();
   const africa = repertoire.find((entry) => entry.song === 'Africa');
   assert.ok(africa?.score?.url, 'Africa score missing from repertoire');
   assert.doesNotMatch(africa.score.url, /%2520/);
+  const nurEinWort = repertoire.find((entry) => entry.song === 'Nur ein Wort');
+  assert.deepEqual(nurEinWort?.sections?.slice(0, 3), [
+    { name: 'A', start: 0 },
+    { name: 'B', start: 24 },
+    { name: 'C', start: 35 },
+  ]);
   const waveforms = await (await get('waveforms/africa.json')).json();
   const waveformFor = (name) => Object.entries(waveforms).find(([url]) => url.endsWith(name))?.[1];
   const alto = waveformFor('TM Africa - A.mp3');
@@ -72,7 +97,7 @@ async function get(path) {
   const alientoHtml = await alientoPage.text();
   assert.match(alientoHtml, /vendor\/choir\/url-policy\.js\?v=20260628-2/);
   assert.match(alientoHtml, /vendor\/choir\/repertoire-data\.js\?v=20260629-1/);
-  assert.match(alientoHtml, /vendor\/choir\/pdf-viewer\.js\?v=20260629-1/);
+  assert.match(alientoHtml, /vendor\/choir\/pdf-viewer\.js\?v=20260801-1/);
   assert.match(alientoHtml, /vendor\/choir\/practice-settings\.js\?v=20260629-1/);
   assert.match(alientoHtml, /vendor\/choir\/media-cache\.js\?v=20260629-1/);
   assert.match(alientoHtml, /vendor\/choir\/practice-domain\.js\?v=20260629-1/);

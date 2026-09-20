@@ -12,6 +12,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Compile Python
         run: python -m py_compile deploy_instance.py build_repertoire_manifest.py build_waveform_cache.py build_waveform_cache_incremental.py serve_static.py
       - name: Parse inline browser scripts
@@ -25,6 +28,14 @@ jobs:
             console.log(`${file}: parsed`);
           }
           NODE
+      - name: Run Node unit tests
+        run: |
+          for test in tests/*.test.js; do
+            case "$test" in
+              tests/browser-smoke.test.js|tests/http-contract.test.js) continue ;;
+            esac
+            node "$test"
+          done
       - name: Validate tracked section files
         run: |
           python - <<'PY'

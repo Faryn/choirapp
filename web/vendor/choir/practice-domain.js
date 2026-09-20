@@ -7,13 +7,9 @@
     entry,
     currentGroup = 'main',
     duration = 0,
-    exampleMarkers = {},
-    songSlug = (name) => String(name || 'song'),
   }) {
     if (currentGroup !== 'main') return [];
-    const source = Array.isArray(entry?.sections) && entry.sections.length
-      ? entry.sections
-      : exampleMarkers[songSlug(entry?.song)];
+    const source = Array.isArray(entry?.sections) ? entry.sections : [];
     if (!source?.length) return [];
     return source
       .map((item) => ({
