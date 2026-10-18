@@ -8,6 +8,7 @@ import datetime as dt
 import hashlib
 import hmac
 import html
+import json
 import os
 import sqlite3
 import threading
@@ -16,6 +17,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
+
+from weekly_tasks import latest_plan
 
 IMMUTABLE_EXTENSIONS = {
     ".pdf",
@@ -50,6 +53,7 @@ NO_CACHE_NAMES = {
     "/vendor/choir/url-policy.js",
 }
 ANALYTICS_DASHBOARD_PATH = "/__analytics"
+WEEKLY_TASKS_API_PATH = "/api/weekly-tasks"
 BERLIN_TZ = ZoneInfo("Europe/Berlin")
 
 
@@ -207,9 +211,19 @@ strong {{ display: block; font-size: 42px; margin-top: 8px; }} p, small {{ color
 class ChoirStaticHandler(SimpleHTTPRequestHandler):
     analytics: AnalyticsStore | None = None
     analytics_title = "Choir app analytics"
+    weekly_tasks_db: Path | None = None
 
     def do_GET(self) -> None:
         path = urlsplit(self.path).path
+        if path == WEEKLY_TASKS_API_PATH:
+            plan = latest_plan(self.weekly_tasks_db) if self.weekly_tasks_db else None
+            body = json.dumps({"plan": plan}, ensure_ascii=False).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if path == ANALYTICS_DASHBOARD_PATH:
             if self.analytics is None:
                 self.send_error(404)
@@ -262,7 +276,7 @@ class ChoirStaticHandler(SimpleHTTPRequestHandler):
         query = parse_qs(parsed.query)
         suffix = Path(path).suffix.lower()
 
-        if path in NO_CACHE_NAMES:
+        if path in NO_CACHE_NAMES or path == WEEKLY_TASKS_API_PATH:
             return "no-cache"
 
         # Manifest fingerprints are appended as ?v=<mtime-size>. Those URLs are
@@ -294,6 +308,10 @@ def main() -> None:
         default="Choir app analytics",
         help="Title displayed by the analytics dashboard.",
     )
+    parser.add_argument(
+        "--weekly-tasks-db",
+        help="SQLite database containing imported weekly rehearsal plans.",
+    )
     args = parser.parse_args()
 
     if bool(args.analytics_db) != bool(args.analytics_secret):
@@ -304,6 +322,7 @@ def main() -> None:
     if args.analytics_db:
         ChoirStaticHandler.analytics = AnalyticsStore(Path(args.analytics_db), Path(args.analytics_secret))
         ChoirStaticHandler.analytics_title = args.analytics_title
+    ChoirStaticHandler.weekly_tasks_db = Path(args.weekly_tasks_db) if args.weekly_tasks_db else None
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"Serving choir app from {directory} on http://{args.host}:{args.port}", flush=True)
     server.serve_forever()

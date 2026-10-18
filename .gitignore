@@ -28,3 +28,4 @@ instances/*/web/waveforms/
 # Instance-local visitor analytics database and HMAC key.
 instances/*/analytics.sqlite3
 instances/*/analytics-secret.key
+instances/*/weekly-tasks.sqlite3
