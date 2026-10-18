@@ -16,6 +16,7 @@ from pathlib import Path
 TIME_RE = re.compile(r"^\d{1,2}[.:]\d{2}$")
 FORWARDED_DATE_RE = re.compile(r"^Date:\s*(.+)$", re.MULTILINE)
 HUMAN_DATE_RE = re.compile(r"(?:[A-Za-z]{3},\s+)?([A-Za-z]{3})\s+(\d{1,2}),\s+(\d{4})")
+GERMAN_SHORT_DATE_RE = re.compile(r"^(\d{1,2})\.(\d{1,2})\.$")
 SPACE_RE = re.compile(r"\s+")
 
 
@@ -39,6 +40,30 @@ def plan_date(message: str) -> str | None:
     return None
 
 
+def rehearsal_date(message: str) -> str | None:
+    """Return the scheduled rehearsal date from the overview when present."""
+    sent_date = plan_date(message)
+    if not sent_date:
+        return None
+    year = dt.date.fromisoformat(sent_date).year
+    lines = [clean(line) for line in message.replace("\r\n", "\n").split("\n")]
+    try:
+        overview = next(idx for idx, line in enumerate(lines) if "übersichtsplan" in line.casefold())
+    except StopIteration:
+        return sent_date
+    for line in lines[overview + 1:]:
+        if line.casefold().startswith("probenplan"):
+            break
+        match = GERMAN_SHORT_DATE_RE.match(line)
+        if match:
+            day, month = map(int, match.groups())
+            try:
+                return dt.date(year, month, day).isoformat()
+            except ValueError:
+                continue
+    return sent_date
+
+
 def parse_weekly_plan(message: str) -> dict[str, object] | None:
     """Parse the deliberately simple three-column schedule in a Wochenmail."""
     lines = [clean(line) for line in message.replace("\r\n", "\n").split("\n")]
@@ -53,7 +78,7 @@ def parse_weekly_plan(message: str) -> dict[str, object] | None:
     idx = start + 1
     while idx < len(lines):
         line = lines[idx]
-        if "linksammlung" in line.casefold() or line.casefold().startswith(("lg", "liebe ")):
+        if ("linksammlung" in line.casefold() or line.casefold().startswith(("lg", "liebe ", "übeaufträge", "tickets "))):
             break
         if not TIME_RE.match(line):
             idx += 1
@@ -64,7 +89,8 @@ def parse_weekly_plan(message: str) -> dict[str, object] | None:
         fields: list[str] = []
         while idx < len(lines):
             candidate = lines[idx]
-            if TIME_RE.match(candidate) or "linksammlung" in candidate.casefold() or candidate.casefold().startswith("lg"):
+            if (TIME_RE.match(candidate) or "linksammlung" in candidate.casefold()
+                    or candidate.casefold().startswith(("lg", "übeaufträge", "tickets "))):
                 break
             if candidate and candidate.casefold() not in {"was", "inhalt"} and not re.fullmatch(r"[-—]{3,}", candidate):
                 fields.append(candidate)
@@ -78,7 +104,7 @@ def parse_weekly_plan(message: str) -> dict[str, object] | None:
 
     if not rows:
         return None
-    return {"date": plan_date(message), "items": rows}
+    return {"date": rehearsal_date(message), "items": rows}
 
 
 def connect(database: Path) -> sqlite3.Connection:

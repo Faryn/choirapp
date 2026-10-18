@@ -39,6 +39,36 @@ LG und bis morgen
             ],
         })
 
+    def test_uses_rehearsal_date_and_stops_before_practice_assignments(self):
+        message = """---------- Forwarded message ---------
+Date: Fri, Oct 16, 2026 at 2:04 PM
+
+Übersichtsplan der Proben bis zum Konzert:
+21.10.
+Probe
+
+Probenplan & Übeauftrag:
+Wann
+Was
+Inhalt
+19.00
+WUP
+kurzes Einsingen
+20.15
+Thank you
+WDH: Intonation und Klangfarben
+Übeaufträge:
+- persönliche Lernlücken schließen
+Tickets fürs Herbstkonzert sind freigeschaltet
+"""
+        self.assertEqual(parse_weekly_plan(message), {
+            "date": "2026-10-21",
+            "items": [
+                {"time": "19:00", "activity": "WUP", "details": ["kurzes Einsingen"]},
+                {"time": "20:15", "activity": "Thank you", "details": ["WDH: Intonation und Klangfarben"]},
+            ],
+        })
+
 
 if __name__ == "__main__":
     unittest.main()
