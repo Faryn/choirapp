@@ -34,8 +34,12 @@
     select:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid rgba(23, 104, 91, 0.35); outline-offset: 2px; }
     .panel { border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: var(--card); box-shadow: var(--shadow); }
     .weekly-plan { margin: 0 0 14px; }
-    .weekly-plan-header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-    .weekly-plan-header h2 { margin: 0; font-size: 18px; }
+    .weekly-plan-toggle { display: flex; width: 100%; min-height: 0; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font: inherit; font-weight: 800; text-align: left; }
+    .weekly-plan-toggle::after { content: '⌄'; color: var(--muted); font-size: 18px; line-height: 1; transition: transform 120ms ease; }
+    .weekly-plan-toggle[aria-expanded="true"]::after { transform: rotate(180deg); }
+    .weekly-plan-header { display: flex; min-width: 0; align-items: center; gap: 8px; }
+    .weekly-plan-header h2 { margin: 0; font-size: 14px; }
+    .weekly-plan-body { padding-top: 8px; }
     .weekly-plan-list { display: grid; gap: 8px; }
     .weekly-plan-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); }
     .weekly-plan-item:first-child { border-top: 0; padding-top: 0; }
@@ -199,11 +203,15 @@
   </header>
 
   <section id="weeklyPlan" class="panel weekly-plan hidden" aria-live="polite">
-    <div class="weekly-plan-header">
-      <h2>This week’s rehearsal</h2>
-      <span id="weeklyPlanDate" class="badge accent"></span>
+    <button id="weeklyPlanToggle" class="weekly-plan-toggle" type="button" aria-expanded="false" aria-controls="weeklyPlanBody">
+      <span class="weekly-plan-header">
+        <h2>This week’s rehearsal</h2>
+        <span id="weeklyPlanDate" class="badge accent"></span>
+      </span>
+    </button>
+    <div id="weeklyPlanBody" class="weekly-plan-body hidden">
+      <div id="weeklyPlanList" class="weekly-plan-list"></div>
     </div>
-    <div id="weeklyPlanList" class="weekly-plan-list"></div>
   </section>
 
   <div class="panel player-panel">
@@ -442,6 +450,8 @@
     scoreViewer: document.getElementById('scoreViewer'),
     scorePages: document.getElementById('scorePages'),
     weeklyPlan: document.getElementById('weeklyPlan'),
+    weeklyPlanToggle: document.getElementById('weeklyPlanToggle'),
+    weeklyPlanBody: document.getElementById('weeklyPlanBody'),
     weeklyPlanDate: document.getElementById('weeklyPlanDate'),
     weeklyPlanList: document.getElementById('weeklyPlanList'),
   };
@@ -595,6 +605,12 @@
     });
     el.weeklyPlan.classList.remove('hidden');
   }
+
+  el.weeklyPlanToggle.addEventListener('click', () => {
+    const expanded = el.weeklyPlanToggle.getAttribute('aria-expanded') === 'true';
+    el.weeklyPlanToggle.setAttribute('aria-expanded', String(!expanded));
+    el.weeklyPlanBody.classList.toggle('hidden', expanded);
+  });
 
   async function loadWeeklyPlan() {
     try {
