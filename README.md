@@ -24,6 +24,11 @@ python3 serve_static.py --directory instances/test/web --port 5175
 
 ## Local prod/test instances
 
+The test-first rehearsal-desk UI uses a light paper palette, a compact sticky
+player, collapsible loop-section controls, and a Settings disclosure for channel
+mix, alignment and technical status. See `DESIGN.md`. The score tagger and audio
+engine are unchanged. UI-only sizing/dismissal checks: `node tests/rehearsal-layout.test.js`.
+
 The deployed app uses two separate static roots:
 
 - Prod: `instances/prod/web` on port `5174`, exposed as `/choir`

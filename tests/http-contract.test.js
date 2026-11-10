@@ -20,6 +20,12 @@ async function get(path) {
   assert.equal(index.headers.get('x-frame-options'), 'DENY');
 
   const html = await index.text();
+  assert.match(html, /vendor\/choir\/rehearsal\.css\?v=20261110-1/);
+  assert.match(html, /vendor\/choir\/rehearsal-layout\.js\?v=20261110-1/);
+  const rehearsalCss = await get('vendor/choir/rehearsal.css?v=20261110-1');
+  assert.match(rehearsalCss.headers.get('content-type') || '', /text\/css/);
+  const layoutScript = await get('vendor/choir/rehearsal-layout.js?v=20261110-1');
+  assert.match(layoutScript.headers.get('content-type') || '', /javascript/);
   assert.match(html, /vendor\/choir\/url-policy\.js\?v=20260628-2/);
   assert.match(html, /vendor\/choir\/repertoire-data\.js\?v=20260629-1/);
   assert.match(html, /vendor\/choir\/pdf-viewer\.js\?v=20260801-1/);

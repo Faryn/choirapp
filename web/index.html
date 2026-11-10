@@ -4,202 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>choir app</title>
-  <style>
-    :root {
-      --bg: #f5f1e9;
-      --card: rgba(255, 254, 250, 0.96);
-      --field: #fffdf8;
-      --border: #d9d1c4;
-      --text: #191715;
-      --muted: #6d665d;
-      --accent: #17685b;
-      --accent-strong: #0f5147;
-      --accent-soft: #e3f1ec;
-      --accent-warm: #a45b20;
-      --danger: #b42318;
-      --shadow: 0 8px 24px rgba(34, 27, 18, 0.08);
-    }
-    * { box-sizing: border-box; }
-    html { scroll-padding-top: 230px; }
-    body { font-family: system-ui, sans-serif; max-width: 1040px; margin: 0 auto; padding: 20px 14px 34px; background: var(--bg); color: var(--text); }
-    .app-header { margin: 0 0 16px; }
-    .app-title { margin: 0; font-size: clamp(30px, 5vw, 44px); letter-spacing: 0; line-height: 1; }
-    .app-subtitle { margin: 7px 0 0; max-width: 62ch; color: var(--muted); line-height: 1.45; }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
-    button { padding: 9px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--text); min-height: 38px; box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset; }
-    button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 750; }
-    button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
-    select, input[type="range"] { max-width: 100%; }
-    select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--text); }
-    select:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid rgba(23, 104, 91, 0.35); outline-offset: 2px; }
-    .panel { border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: var(--card); box-shadow: var(--shadow); }
-    .weekly-plan { margin: 0 0 14px; }
-    .weekly-plan-toggle { display: flex; width: 100%; min-height: 0; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font: inherit; font-weight: 800; text-align: left; }
-    .weekly-plan-toggle::after { content: '⌄'; color: var(--muted); font-size: 18px; line-height: 1; transition: transform 120ms ease; }
-    .weekly-plan-toggle[aria-expanded="true"]::after { transform: rotate(180deg); }
-    .weekly-plan-header { display: flex; min-width: 0; align-items: center; gap: 8px; }
-    .weekly-plan-header h2 { margin: 0; font-size: 14px; }
-    .weekly-plan-body { padding-top: 8px; }
-    .weekly-plan-list { display: grid; gap: 8px; }
-    .weekly-plan-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); }
-    .weekly-plan-item:first-child { border-top: 0; padding-top: 0; }
-    .weekly-plan-time { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
-    .weekly-plan-activity { font-weight: 800; }
-    .weekly-plan-song { padding: 0; min-height: auto; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--accent); font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-    .weekly-plan-details { margin: 3px 0 0; color: var(--muted); line-height: 1.35; }
-    .player-panel { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(16px); }
-    .player-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 10px; }
-    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
-    .song-title { margin: 2px 0 0; font-size: clamp(20px, 4vw, 30px); letter-spacing: 0; line-height: 1.1; }
-    .control-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-    .field { display: grid; gap: 4px; min-width: 0; }
-    .field label { color: var(--muted); font-size: 12px; font-weight: 750; }
-    .field select { width: 100%; }
-    .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-    .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: #ebe4d9; color: var(--muted); font-size: 12px; font-weight: 750; white-space: nowrap; }
-    .badge.accent { background: var(--accent-soft); color: var(--accent); }
-    .badge.section { background: #f4eadf; color: var(--accent-warm); }
-    .nav-link { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: var(--field); border: 1px solid var(--border); color: var(--text); font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; }
-    .nav-link:hover { border-color: var(--accent); color: var(--accent); }
-    .transport-row button { min-width: 78px; }
-    .speed-control { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; }
-    .speed-control select { min-width: 76px; }
-    .section-loop { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 8px; align-items: center; margin: 8px 0 0; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,253,248,0.78); }
-    .section-loop label { color: var(--muted); font-size: 12px; font-weight: 800; }
-    .advanced-sync { margin: 8px 0 0; border-top: 1px solid var(--border); padding-top: 8px; }
-    .advanced-sync summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 800; user-select: none; }
-    .advanced-sync summary:hover { color: var(--text); }
-    .tiny { color: var(--muted); font-size: 12px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-
-    .timeline-wrap { margin-top: 14px; }
-    .timeline-labels { display: flex; justify-content: space-between; font-size: 12px; color: #555; }
-    .timeline {
-      position: relative;
-      height: 64px;
-      border-radius: 8px;
-      background: #faf8f3;
-      border: 1px solid var(--border);
-      touch-action: none;
-      user-select: none;
-      margin-top: 6px;
-      overflow: hidden;
-    }
-    .wave {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      opacity: 0.9;
-    }
-    .shade {
-      position: absolute;
-      top: 0;
-      height: 100%;
-      background: rgba(25, 23, 21, 0.14);
-      pointer-events: none;
-    }
-    .loop-region {
-      position: absolute;
-      top: 0;
-      height: 100%;
-      background: rgba(23, 104, 91, 0.16);
-      border-left: 2px solid rgba(23, 104, 91, 0.78);
-      border-right: 2px solid rgba(23, 104, 91, 0.78);
-      pointer-events: none;
-    }
-    .playhead {
-      position: absolute;
-      top: 0;
-      height: 100%;
-      width: 2px;
-      background: var(--text);
-      pointer-events: none;
-    }
-    .handle {
-      position: absolute;
-      top: 50%;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      border: 2px solid #fff;
-      box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
-      cursor: grab;
-    }
-    .handle.a { background: var(--accent); }
-    .handle.s { background: var(--text); }
-    .handle.b { background: var(--danger); }
-    .handle.dragging { cursor: grabbing; }
-    .score-panel { margin-top: 14px; }
-    .score-header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; }
-    .score-actions { display: flex; align-items: center; gap: 8px; }
-    .score-viewer {
-      height: min(70vh, 760px);
-      min-height: 420px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-y;
-      background: #ede7dc;
-      padding: 10px;
-    }
-    .score-pages { display: grid; gap: 16px; justify-items: center; }
-    .score-page {
-      width: 100%;
-      max-width: 100%;
-      height: auto;
-      background: white;
-      border-radius: 3px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08), 0 12px 28px rgba(0,0,0,0.16);
-    }
-    .score-message { padding: 18px; text-align: center; color: #555; }
-    .hidden { display: none; }
-    @media (max-width: 720px) {
-      html { scroll-padding-top: 178px; }
-      body { padding: 0 8px 20px; }
-      .app-header { display: none; }
-      .panel { padding: 10px; border-radius: 8px; }
-      .weekly-plan { margin: 8px 0; }
-      .player-panel { top: 0; border-radius: 0 0 8px 8px; margin-left: -8px; margin-right: -8px; }
-      .player-head { display: grid; align-items: center; gap: 6px; margin-bottom: 4px; }
-      .eyebrow { display: none; }
-      .song-title { margin: 0; font-size: 18px; line-height: 1.12; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .badges { justify-content: flex-start; gap: 4px; min-width: 0; }
-      .badge { min-height: 20px; padding: 2px 6px; font-size: 11px; }
-      .nav-link { min-height: 24px; padding: 2px 7px; font-size: 11px; }
-      #statusBadge { display: none; }
-      .control-grid { grid-template-columns: 0.95fr 1.05fr; gap: 6px; }
-      .control-grid .field:first-child { grid-column: 1 / -1; }
-      .field { gap: 2px; }
-      .field label { font-size: 10px; }
-      select { padding: 5px 7px; border-radius: 8px; font-size: 13px; }
-      .row { gap: 6px; margin: 6px 0; }
-      button { padding: 9px 12px; min-height: 44px; }
-      .transport-row button { flex: 1 1 0; min-width: 0; }
-      .transport-row label { min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
-      .speed-control { min-height: 44px; flex: 1 1 100%; }
-      .speed-control select { flex: 1; min-height: 36px; }
-      .section-loop { grid-template-columns: auto minmax(0, 1fr); gap: 6px; padding: 6px; }
-      .section-loop button { grid-column: 1 / -1; }
-      .advanced-sync { display: none; }
-      .timeline-wrap { margin-top: 6px; }
-      .timeline-labels { display: none; }
-      .timeline { height: 46px; margin-top: 0; }
-      .handle { width: 22px; height: 22px; }
-      .timeline-wrap > .tiny { display: none; }
-      .score-panel { margin-top: 8px; }
-      .score-header { margin-bottom: 6px; }
-      .score-viewer { height: calc(100svh - 214px); min-height: 350px; padding: 6px; }
-      .score-pages { gap: 10px; }
-    }
-  </style>
+  <link rel="stylesheet" href="./vendor/choir/rehearsal.css?v=20261110-1" />
+  <script defer src="./vendor/choir/rehearsal-layout.js?v=20261110-1"></script>
 </head>
 <body>
   <header class="app-header">
     <h1 class="app-title">choir app</h1>
+    <a class="nav-link" href="./page-coder.html">Score tagger</a>
   </header>
 
   <section id="weeklyPlan" class="panel weekly-plan hidden" aria-live="polite">
@@ -214,43 +25,67 @@
     </div>
   </section>
 
+  <section class="control-grid" aria-label="Song and voice">
+    <div class="field">
+      <label for="songSelect">Song</label>
+      <select id="songSelect"></select>
+    </div>
+    <div class="field">
+      <label for="groupSelect">Version</label>
+      <select id="groupSelect"></select>
+    </div>
+    <div class="field">
+      <label for="trackSelect">Voice / track</label>
+      <select id="trackSelect"></select>
+    </div>
+  </section>
+
   <div class="panel player-panel">
     <div class="player-head">
-      <div>
-        <div class="eyebrow">Now practicing</div>
-        <h2 id="currentSongTitle" class="song-title">Loading…</h2>
-      </div>
-      <div class="badges" aria-label="Playback status">
-        <span id="loadedBadge" class="badge accent">0 loaded</span>
-        <span id="cachedBadge" class="badge">0 cached</span>
-        <span id="loopBadge" class="badge">Loop on</span>
-        <span id="sectionBadge" class="badge section hidden">Section A</span>
-        <span id="statusBadge" class="badge">idle</span>
-        <a class="nav-link" href="./page-coder.html">Score tagger</a>
-      </div>
-    </div>
-
-    <div class="control-grid">
-      <div class="field">
-        <label for="songSelect">Song</label>
-        <select id="songSelect"></select>
-      </div>
-      <div class="field">
-        <label for="groupSelect">Version</label>
-        <select id="groupSelect"></select>
-      </div>
-      <div class="field">
-        <label for="trackSelect">Track</label>
-        <select id="trackSelect"></select>
-      </div>
+      <h2 id="currentSongTitle" class="song-title">Loading…</h2>
+      <details class="player-settings" id="playerSettings">
+        <summary>Settings</summary>
+        <div class="settings-body">
+          <label class="field" title="Channel mixing is available at 100% tempo only">
+            Channel mix
+            <select id="channelMixSelect" aria-describedby="channelMixHint">
+              <option value="stereo">Stereo</option>
+              <option value="left">Left only</option>
+              <option value="right">Right only</option>
+              <option value="left-both">Left → both</option>
+              <option value="right-both">Right → both</option>
+            </select>
+          </label>
+          <p id="channelMixHint" class="tiny">Works at 100% tempo</p>
+          <details class="advanced-sync">
+            <summary>Track alignment</summary>
+            <div class="settings-stack">
+              <label><input id="alignMode" type="checkbox" checked /> Align active ranges</label>
+              <label class="field" for="nudge">Track offset</label>
+              <input id="nudge" type="range" min="-500" max="500" step="1" value="0" />
+              <span class="mono" id="nudgeVal">0 ms</span>
+              <div class="row">
+                <button id="syncNow" type="button">Sync now</button>
+                <button id="nudgeReset" type="button">Reset offset</button>
+              </div>
+              <label><input id="autoSync" type="checkbox" checked /> Auto-sync</label>
+            </div>
+          </details>
+          <div class="technical-status" aria-label="Audio status">
+            <span id="loadedBadge" class="badge">0 loaded</span>
+            <span id="cachedBadge" class="badge">0 cached</span>
+            <span id="statusBadge" class="badge">idle</span>
+          </div>
+        </div>
+      </details>
     </div>
 
     <div class="row transport-row">
       <button id="play" class="primary">Play</button>
       <button id="pause">Pause</button>
       <button id="stop">Stop</button>
-      <label><input id="loopEnabled" type="checkbox" checked /> Loop</label>
-      <label class="speed-control" title="Slower tempos use browser pitch preservation when available">
+      <label class="loop-toggle"><input id="loopEnabled" type="checkbox" checked /> Loop</label>
+      <label class="speed-control" title="Slower tempos preserve pitch when supported by your browser">
         Tempo
         <select id="speedSelect">
           <option value="1">100%</option>
@@ -262,39 +97,15 @@
           <option value="0.7">70%</option>
         </select>
       </label>
-      <label class="speed-control" title="Channel mixing is available at 100% tempo only">
-        Channel mix
-        <select id="channelMixSelect" aria-describedby="channelMixHint">
-          <option value="stereo">Stereo</option>
-          <option value="left">Left only</option>
-          <option value="right">Right only</option>
-          <option value="left-both">Left → both</option>
-          <option value="right-both">Right → both</option>
-        </select>
-      </label>
-      <span id="channelMixHint" class="tiny">Works at 100% tempo</span>
     </div>
-
-    <details class="advanced-sync">
-      <summary>Advanced sync</summary>
-      <div class="row tiny">
-        <label><input id="alignMode" type="checkbox" checked /> Active-range align</label>
-        <span>Track nudge:</span>
-        <input id="nudge" type="range" min="-500" max="500" step="1" value="0" />
-        <span class="mono" id="nudgeVal">0 ms</span>
-        <button id="syncNow" type="button">Sync now</button>
-        <label><input id="autoSync" type="checkbox" checked /> Auto-sync</label>
-        <button id="nudgeReset" type="button">Reset nudge</button>
-      </div>
-    </details>
 
     <div class="timeline-wrap">
       <div class="timeline-labels">
-        <div>A: <span class="mono" id="aVal">0.00</span>s</div>
-        <div>S: <span class="mono" id="sVal">0.00</span>s</div>
-        <div>B: <span class="mono" id="bVal">0.00</span>s</div>
+        <div>Start <span class="mono" id="aVal">0.00</span>s</div>
+        <div>Position <span class="mono" id="sVal">0.00</span>s</div>
+        <div>End <span class="mono" id="bVal">0.00</span>s</div>
       </div>
-      <div id="timeline" class="timeline">
+      <div id="timeline" class="timeline" aria-label="Audio timeline">
         <canvas id="wave" class="wave"></canvas>
         <div id="shadeLeft" class="shade"></div>
         <div id="loopRegion" class="loop-region"></div>
@@ -304,15 +115,27 @@
         <div id="hS" class="handle s" title="Seek/playhead (S)"></div>
         <div id="hB" class="handle b" title="Loop end (B)"></div>
       </div>
-      <div class="tiny">Tip: drag any handle. Loop constraints are enforced: 0 ≤ A &lt; S ≤ B ≤ duration.</div>
     </div>
 
-    <div id="sectionLoopControls" class="section-loop hidden">
-      <label for="sectionStartSelect">Loop</label>
-      <select id="sectionStartSelect"></select>
-      <label for="sectionEndSelect">End</label>
-      <select id="sectionEndSelect"></select>
-      <button id="applySectionLoop" type="button" class="primary">Set loop</button>
+    <div class="loop-toolbar">
+      <details id="sectionLoopControls" class="loop-editor hidden">
+        <summary>Loop sections</summary>
+        <div class="section-loop">
+          <div class="field">
+            <label for="sectionStartSelect">From</label>
+            <select id="sectionStartSelect"></select>
+          </div>
+          <div class="field">
+            <label for="sectionEndSelect">To</label>
+            <select id="sectionEndSelect"></select>
+          </div>
+          <button id="applySectionLoop" type="button" class="primary">Set loop</button>
+        </div>
+      </details>
+      <div class="badges" aria-label="Loop status">
+        <span id="loopBadge" class="badge">Loop on</span>
+        <span id="sectionBadge" class="badge section hidden">Section A</span>
+      </div>
     </div>
 
     <div class="hidden" aria-hidden="true">
@@ -331,7 +154,7 @@
       </div>
       <div class="score-actions">
         <span id="pageBadge" class="badge">Page —</span>
-        <a class="tiny" id="scoreOpen" href="#" target="_blank" rel="noopener">Open PDF</a>
+        <a class="nav-link" id="scoreOpen" href="#" target="_blank" rel="noopener">Open PDF</a>
       </div>
     </div>
     <div id="scoreViewer" class="score-viewer">
@@ -1098,9 +921,8 @@
 
   function updateBadges() {
     const total = songTrackManifest.length || 0;
-    const compact = window.matchMedia?.('(max-width: 720px)').matches;
-    el.loadedBadge.textContent = compact ? `L ${loadedTrackCount()}/${total}` : `${loadedTrackCount()}/${total} loaded`;
-    el.cachedBadge.textContent = compact ? `C ${cachedTrackCount()}/${total}` : `${cachedTrackCount()}/${total} cached`;
+    el.loadedBadge.textContent = `${loadedTrackCount()}/${total} loaded`;
+    el.cachedBadge.textContent = `${cachedTrackCount()}/${total} cached`;
     el.loopBadge.textContent = el.loopEnabled.checked ? 'Loop on' : 'Loop off';
     el.loopBadge.classList.toggle('accent', el.loopEnabled.checked);
     const section = currentSectionAt();
