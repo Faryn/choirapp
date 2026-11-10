@@ -25,9 +25,9 @@ vm.runInNewContext(code, {
 });
 assert.equal(metaColor, '#f4f2ed');
 assert.equal(repaintEvents, 1);
-background = '#181d1b';
+background = '#1e1d1b';
 onPreferenceChange();
-assert.equal(metaColor, '#181d1b', 'browser chrome should update without reloading');
+assert.equal(metaColor, '#1e1d1b', 'browser chrome should update without reloading');
 assert.equal(repaintEvents, 2, 'waveform repaint should be requested when appearance changes');
 background = '#f4f2ed';
 onPreferenceChange();
