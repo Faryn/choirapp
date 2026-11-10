@@ -36,20 +36,22 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .nav-link { display: inline-flex; align-items: center; min-height: 36px; font-size: 13px; color: var(--muted); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
 .panel { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--card); }
-.weekly-plan { margin-bottom: 16px; padding: 8px 16px; background: transparent; }
+.weekly-plan { margin-bottom: 16px; padding: 8px 16px; border: 2px solid #81a99a; background: #e5f0e9; }
 .weekly-plan-toggle { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; padding: 4px 0; border: 0; border-radius: 0; background: transparent; text-align: left; }
 .weekly-plan-toggle:hover { background: transparent; }
 .weekly-plan-toggle::after { content: ''; width: 8px; height: 8px; margin: 0 4px 4px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); transition: transform 160ms var(--ease); }
 .weekly-plan-toggle[aria-expanded="true"]::after { transform: rotate(225deg); }
 .weekly-plan-header { display: flex; min-width: 0; align-items: center; gap: 12px; }
-.weekly-plan-header h2 { margin: 0; font-size: 14px; font-weight: 500; }
+.weekly-plan-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: #1b5144; }
+.weekly-plan-header .badge { padding: 4px 8px; border-radius: 4px; background: #fff; color: #1b5144; font-weight: 500; }
+.weekly-plan-toggle::after { border-color: #1b5144; }
 .weekly-plan-body { padding: 8px 0; }
 .weekly-plan-list { display: grid; gap: 8px; }
 .weekly-plan-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
 .weekly-plan-time { color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
 .weekly-plan-activity { font-weight: 500; }
 .weekly-plan-song { min-height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--accent); font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
-.weekly-plan-details { margin: 4px 0 0; color: var(--muted); }
+.weekly-plan-details { margin: 4px 0 0; color: #486357; }
 .control-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
 .field { display: grid; gap: 4px; min-width: 0; }
 .field label, label.field { color: var(--muted); font-size: 12px; }

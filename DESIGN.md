@@ -11,7 +11,7 @@ Approved direction, 2026-11-10. Test instance first; production must not be prom
 
 ## Surface hierarchy
 
-1. Weekly rehearsal, when supplied, retains its existing collapsible behavior.
+1. Weekly rehearsal, when supplied, retains its existing collapsible behavior. Paul requested stronger visibility: a soft teal-green fill, defined frame, larger dark-teal heading and contrasting white date label distinguish it from ordinary controls.
 2. Song, version, and voice/track selection are clearly labelled above the player.
 3. The compact sticky player retains song title, Play / Pause / Stop, loop toggle, tempo, waveform and timing.
 4. Loop-section selection uses a collapsible native disclosure; it does not consume permanent score space.
