@@ -20,6 +20,10 @@ Approved direction, 2026-11-10. Test instance first; production must not be prom
 
 `web/vendor/choir/rehearsal.css` owns the practice surface theme. Canvas `#f4f2ed`, panels white, text `#262e2b`, secondary `#626c66`, action teal `#24685d`. Use 4px spacing, weight 400/500, simple borders, visible focus, and no marketing bylines or technical constraint formulas.
 
+## Automatic dark mode
+
+Both practice and score tagger follow the browser/OS preference via shared `system-theme.css` tokens. Light retains the approved paper palette; dark uses a neutral charcoal surround with pale teal controls and a clearly coloured rehearsal summary. Native fields, highlights, waveform markers and browser chrome adapt too. Theme changes repaint canvases without restarting playback. Scores remain white with their original ink; no PDF inversion. `coder-theme.css` only themes the existing tagger and does not redesign its layout.
+
 ## Preserved behavior
 
 All existing JS-bound element IDs remain unique and present. Audio engine, track alignment algorithms, playback controller, score renderer, repertoire files and saved practice settings remain unchanged. UI-only sizing/dismissal is isolated in `rehearsal-layout.js`. The score tagger remains available and is not redesigned in this pass.

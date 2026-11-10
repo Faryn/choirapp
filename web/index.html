@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>choir app</title>
-  <link rel="stylesheet" href="./vendor/choir/rehearsal.css?v=20261110-2" />
+  <meta name="theme-color" content="#f4f2ed" />
+  <link rel="stylesheet" href="./vendor/choir/rehearsal.css?v=20261110-3" />
+  <link rel="stylesheet" href="./vendor/choir/system-theme.css?v=20261110-1" />
+  <script defer src="./vendor/choir/system-theme.js?v=20261110-1"></script>
   <script defer src="./vendor/choir/rehearsal-layout.js?v=20261110-1"></script>
 </head>
 <body>
@@ -639,8 +642,9 @@
       el.wave.height = h;
     }
     const ctx2d = el.wave.getContext('2d');
+    const palette = getComputedStyle(document.documentElement);
     ctx2d.clearRect(0, 0, w, h);
-    ctx2d.fillStyle = '#f7f7f7';
+    ctx2d.fillStyle = palette.getPropertyValue('--timeline-bg').trim();
     ctx2d.fillRect(0, 0, w, h);
 
     const currentMeta = songTrackManifest[currentTrackIndex];
@@ -662,7 +666,7 @@
 
       sections.forEach((section, idx) => {
         const x = clamp((section.start / d) * w, 0, w);
-        ctx2d.strokeStyle = 'rgba(36, 94, 82, 0.46)';
+        ctx2d.strokeStyle = palette.getPropertyValue('--marker-line').trim();
         ctx2d.lineWidth = Math.max(1, dpr);
         ctx2d.beginPath();
         ctx2d.moveTo(x, 0);
@@ -675,14 +679,14 @@
           const pillH = 16 * dpr;
           const pillX = clamp(x - pillW / 2, 2 * dpr, w - pillW - 2 * dpr);
           const pillY = 4 * dpr;
-          ctx2d.fillStyle = 'rgba(255, 254, 250, 0.9)';
-          ctx2d.strokeStyle = 'rgba(36, 94, 82, 0.35)';
+          ctx2d.fillStyle = palette.getPropertyValue('--marker-bg').trim();
+          ctx2d.strokeStyle = palette.getPropertyValue('--marker-border').trim();
           ctx2d.lineWidth = Math.max(1, dpr);
           ctx2d.beginPath();
           ctx2d.roundRect(pillX, pillY, pillW, pillH, 6 * dpr);
           ctx2d.fill();
           ctx2d.stroke();
-          ctx2d.fillStyle = '#245e52';
+          ctx2d.fillStyle = palette.getPropertyValue('--marker-ink').trim();
           ctx2d.fillText(section.name, pillX + pillW / 2, pillY + pillH / 2 + 0.5 * dpr);
           lastLabelX = pillX + pillW;
         }
@@ -690,7 +694,7 @@
       ctx2d.restore();
     };
 
-    ctx2d.strokeStyle = '#9aa3b2';
+    ctx2d.strokeStyle = palette.getPropertyValue('--wave-line').trim();
     ctx2d.lineWidth = Math.max(1, dpr);
     ctx2d.beginPath();
 
@@ -1771,6 +1775,7 @@
   }
 
   let lastViewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  window.addEventListener('choir-theme-change', drawWaveform);
   window.addEventListener('resize', () => {
     if (buffer) drawWaveform();
     const nextViewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;

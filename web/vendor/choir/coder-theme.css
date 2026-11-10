@@ -1,0 +1,18 @@
+/* Theme the existing tagger without altering score pages or its layout. */
+html { scrollbar-color: var(--scrollbar) var(--bg); }
+::selection { background: var(--selection-bg); color: var(--selection-ink); }
+input { accent-color: var(--accent); caret-color: var(--accent); }
+:where(button, select, input, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (prefers-color-scheme: dark) {
+  button, select, input, .nav-link { background: var(--field); }
+  button.primary { color: var(--on-accent); }
+  button:hover { border-color: var(--hover-border); }
+  .sidebar, .score-top { background: var(--panel); }
+  .score-viewer { background: var(--score-surround); }
+  .timeline { background: var(--timeline-bg); }
+  .playhead { background: var(--text); }
+  .marker-line { background: var(--accent); }
+  .marker-line.section { background: var(--danger); }
+  .marker-label { background: var(--marker-bg); }
+  .marker-list li { background: var(--field); }
+}

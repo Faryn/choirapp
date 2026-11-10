@@ -404,6 +404,10 @@
       }
     }
   </style>
+  <meta name="theme-color" content="#f7f5f0" />
+  <link rel="stylesheet" href="./vendor/choir/system-theme.css?v=20261110-1" />
+  <link rel="stylesheet" href="./vendor/choir/coder-theme.css?v=20261110-1" />
+  <script defer src="./vendor/choir/system-theme.js?v=20261110-1"></script>
 </head>
 <body>
   <main class="app">
@@ -664,9 +668,10 @@
 
       const data = selectedWaveform()?.waveform || [];
       const mid = rect.height / 2;
-      ctx.fillStyle = '#d9d1c4';
+      const palette = getComputedStyle(document.documentElement);
+      ctx.fillStyle = palette.getPropertyValue('--timeline-bg').trim();
       ctx.fillRect(0, 0, rect.width, rect.height);
-      ctx.strokeStyle = '#245e52';
+      ctx.strokeStyle = palette.getPropertyValue('--wave-line').trim();
       ctx.lineWidth = 2;
       ctx.beginPath();
 
@@ -1008,6 +1013,7 @@
       el.audio.currentTime = duration * pct;
     });
 
+    window.addEventListener('choir-theme-change', drawWaveform);
     window.addEventListener('resize', () => {
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(() => {

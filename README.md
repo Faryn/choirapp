@@ -29,6 +29,10 @@ player, collapsible loop-section controls, and a Settings disclosure for channel
 mix, alignment and technical status. See `DESIGN.md`. The score tagger and audio
 engine are unchanged. UI-only sizing/dismissal checks: `node tests/rehearsal-layout.test.js`.
 
+Practice and score tagger automatically follow browser/OS light and dark mode,
+including changes while open. Score pages remain white. Shared appearance and
+contrast checks: `node tests/system-theme.test.js`.
+
 The deployed app uses two separate static roots:
 
 - Prod: `instances/prod/web` on port `5174`, exposed as `/choir`
