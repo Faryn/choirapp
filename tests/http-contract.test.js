@@ -29,9 +29,9 @@ async function get(path) {
   for (const asset of ['system-theme.css', 'coder-theme.css', 'system-theme.js']) {
     await get(`vendor/choir/${asset}?v=20261110-1`);
   }
-  assert.match(html, /system-theme\.css\?v=20261110-2/);
+  assert.match(html, /system-theme\.css\?v=20261110-3/);
   const coderHtml = await (await get('page-coder.html')).text();
-  assert.match(coderHtml, /system-theme\.css\?v=20261110-2/);
+  assert.match(coderHtml, /system-theme\.css\?v=20261110-3/);
   assert.match(coderHtml, /coder-theme\.css\?v=20261110-1/);
   assert.match(html, /vendor\/choir\/url-policy\.js\?v=20260628-2/);
   assert.match(html, /vendor\/choir\/repertoire-data\.js\?v=20260629-1/);

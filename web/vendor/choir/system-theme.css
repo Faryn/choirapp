@@ -66,3 +66,9 @@
     --loop-shade: rgb(212 176 113 / 16%);
   }
 }
+
+/* Invert only rendered notation, never controls, waveform or score overlays.
+   Hue rotation keeps coloured markings closer to their original hue. */
+@media screen and (prefers-color-scheme: dark) {
+  canvas.score-page { filter: invert(1) hue-rotate(180deg); }
+}

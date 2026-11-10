@@ -22,7 +22,7 @@ Approved direction, 2026-11-10. Test instance first; production must not be prom
 
 ## Automatic dark mode
 
-Both practice and score tagger follow the browser/OS preference via shared `system-theme.css` tokens. Light retains the approved paper palette; dark uses warm neutral charcoal surfaces, ivory text, and muted amber controls and loop markers. The rehearsal summary uses a restrained amber-tinted fill and defined border. Avoid green-tinted backgrounds, borders or body text; colour is reserved for functional accents. Native fields, highlights, waveform markers and browser chrome adapt too. Theme changes repaint canvases without restarting playback. Scores remain white with their original ink; no PDF inversion. `coder-theme.css` only themes the existing tagger and does not redesign its layout.
+Both practice and score tagger follow the browser/OS preference via shared `system-theme.css` tokens. Light retains the approved paper palette; dark uses warm neutral charcoal surfaces, ivory text, and muted amber controls and loop markers. The rehearsal summary uses a restrained amber-tinted fill and defined border. Avoid green-tinted backgrounds, borders or body text; colour is reserved for functional accents. Native fields, highlights, waveform markers and browser chrome adapt too. Theme changes repaint canvases without restarting playback. In dark mode, rendered score canvases invert to white notation on black; hue rotation keeps coloured markings closer to their original hue. Only score pixels are filtered, not controls, waveform or overlays. Light mode and printing retain the original PDF appearance. `coder-theme.css` only themes the existing tagger and does not redesign its layout.
 
 ## Preserved behavior
 
